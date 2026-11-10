@@ -121,6 +121,7 @@ in a separate process against the same synthetic fixture. That comparison covers
 ## Development and verification
 
 ```sh
+moon update
 moon check --target native
 moon test --target native
 moon build --target native

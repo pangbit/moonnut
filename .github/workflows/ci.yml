@@ -18,6 +18,7 @@ jobs:
       - name: Check and test
         run: |
           moon version
+          moon update
           moon check --target native
           moon test --target native
           moon build --target native

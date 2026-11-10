@@ -101,6 +101,7 @@ NUT 使用 parseconf 风格，不是 JSON 或 shell：反斜杠转义下一个�
 ## 开发与验证
 
 ```sh
+moon update
 moon check --target native
 moon test --target native
 moon build --target native
