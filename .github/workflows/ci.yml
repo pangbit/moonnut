@@ -10,7 +10,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install native dependencies
-        run: sudo apt-get update && sudo apt-get install -y build-essential libssl-dev zlib1g-dev nut-server nut-client
+        run: sudo apt-get update && sudo apt-get install -y build-essential libssl-dev zlib1g-dev nut-server nut-client libnss3-tools
       - name: Install verified MoonBit version
         run: curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash -s -- '0.10.20+65efd5b93'
       - name: Set toolchain path

@@ -28,9 +28,11 @@ actual NUT 2.8.4 `upsd` + `dummy-ups` programs with a virtual UPS in isolated
 Ubuntu CI. All three read operations agree with official `upsc`
 ([verified run](https://github.com/pangbit/moonnut/actions/runs/42835044823)).
 A common `LIST UPS` fixture is also compared with PyNUT in a separate process.
-No physical UPS or production deployment has been verified. Actual-daemon testing
-currently uses anonymous loopback plaintext; TLS is covered by separate synthetic
-TLS servers, not a claimed NUT TLS/backend or hardware certification.
+No physical UPS or production deployment has been verified. The actual-daemon
+suite also exercises verified STARTTLS authentication, incorrect credentials,
+untrusted certificates and hostname mismatch, using the installed NUT TLS backend.
+The CI log identifies the backend tested; this is not a claim about every NUT
+TLS build or a hardware certification.
 
 ## Quick start
 
@@ -90,8 +92,10 @@ should use a credential provider appropriate to their deployment.
    moonnut's `LIST UPS`, `LIST VAR` and `GET VAR` results with official `upsc`,
    then stops only its own child processes and removes its temporary files.
    It does not use the system's NUT configuration, a service manager, a physical
-   device, or a persistent account. This interoperability check uses anonymous
-   loopback plaintext; it is not a real-server TLS or hardware certification.
+   device, or a persistent account. It checks both anonymous loopback plaintext
+   and verified STARTTLS with a disposable read-only account. It also rejects a
+   wrong password, untrusted CA and wrong hostname. OpenSSL is required; NSS-backed
+   NUT builds additionally need `libnss3-tools`. Keys and accounts remain temporary.
 3. Run `python3 scripts/tls_smoke.py` to demonstrate accepted trusted TLS and
    rejection of untrusted certificates and wrong hostnames before credentials.
 

@@ -2,6 +2,9 @@
 
 ## Unreleased / 未发布
 
+- Exercise actual NUT STARTTLS authentication and credential/certificate rejection paths.
+- 增加真实 NUT STARTTLS 认证与凭据/证书拒绝路径验证。
+
 - Add an isolated NUT upsd + dummy-ups interoperability demo and CI check.
 - Extend the query example with variable listing and single-variable reads.
 - 新增隔离 NUT upsd + dummy-ups 互操作演示与 CI 检查。

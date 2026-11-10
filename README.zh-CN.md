@@ -24,8 +24,8 @@ GitHub main 包含未发布的演示改进。Mooncakes 由维护者手动发布�
 `upsd` + `dummy-ups` 程序与虚拟 UPS。三种只读操作均与官方 `upsc` 一致
 （[已验证 CI](https://github.com/pangbit/moonnut/actions/runs/42835044823)）。
 另与独立进程中的 PyNUT 对照共同的 `LIST UPS` 场景。未验证物理 UPS 或生产部署；
-真实守护进程测试目前使用匿名回环明文，TLS 由独立合成 TLS 服务验证，
-不宣称已完成 NUT TLS 后端或硬件认证。
+真实守护进程测试还覆盖验证 STARTTLS 后认证、错误密码、未知证书及错误主机名，
+采用当前安装的 NUT TLS 后端。CI 日志注明具体后端，不代表所有 NUT TLS 构建或硬件认证。
 
 ## 快速开始
 
@@ -71,8 +71,9 @@ moon run examples/query --target native -- ups.example.invalid 3493 --ca /path/t
    脚本使用临时配置启动真实 NUT `upsd` 与 `dummy-ups` 程序，创建合成设备，
    仅绑定回环地址；将 moonnut 的 `LIST UPS`、`LIST VAR`、`GET VAR` 与官方 `upsc`
    对照。结束后只停止自己创建的子进程并清理临时文件，不使用系统 NUT 配置、
-   服务管理器、物理设备或长期账号。此项互操作测试使用匿名回环明文，
-   不等于真实服务器 TLS 或硬件认证。
+   服务管理器、物理设备或长期账号。它同时验证匿名回环明文与使用临时只读账号的
+   STARTTLS，并拒绝错误密码、未知 CA 及错误主机名。需要 OpenSSL；NSS 后端构建
+   还需 `libnss3-tools`。密钥和账号均为临时测试产物。
 3. 运行 `python3 scripts/tls_smoke.py`，演示接受可信 TLS，以及在发送凭据前
    拒绝未知证书与错误主机名。
 

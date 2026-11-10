@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Disposable NUT upsd + dummy-ups interoperability demo, no physical UPS access.
 
-Requires Linux NUT 2.8+ (nut-server and nut-client), Python 3.9+, and a built
-examples/query executable. Run as a regular user. This creates only temporary
+Requires Linux NUT 2.8+ (nut-server and nut-client), OpenSSL, Python 3.9+, and a built
+examples/query executable. NSS-enabled NUT also needs libnss3-tools.
+Run as a regular user. This creates only temporary
 configuration/state, binds only loopback, and stops only its own child processes.
 No service-manager commands, global NUT configuration or real driver are used.
 """
@@ -10,6 +11,7 @@ import getpass
 import os
 from pathlib import Path
 import shutil
+import secrets
 import socket
 import subprocess
 import tempfile
@@ -47,6 +49,43 @@ def run(args, env):
     return subprocess.run(args, env=env, capture_output=True, text=True, timeout=10)
 
 
+
+def configure_tls(folder, upsd):
+    """Create an ephemeral server identity for the installed NUT TLS backend."""
+    cert, key = folder / "cert.pem", folder / "key.pem"
+    config = folder / "openssl.cnf"
+    config.write_text("[req]\nprompt=no\ndistinguished_name=dn\nx509_extensions=ext\n"
+                      "[dn]\nCN=localhost\n[ext]\nsubjectAltName=DNS:localhost\n"
+                      "basicConstraints=critical,CA:TRUE\n")
+    subprocess.run(["openssl", "req", "-x509", "-newkey", "rsa:2048", "-nodes",
+                    "-days", "1", "-keyout", str(key), "-out", str(cert),
+                    "-config", str(config)], check=True, capture_output=True)
+    links = subprocess.run(["ldd", upsd], check=True, capture_output=True, text=True).stdout
+    if "libnss3" in links:
+        certutil, pk12util = locate("certutil"), locate("pk12util")
+        database = folder / "certdb"
+        database.mkdir(mode=0o700)
+        db = "sql:" + str(database)
+        bundle = folder / "bundle.p12"
+        subprocess.run([certutil, "-N", "-d", db, "--empty-password"],
+                       check=True, capture_output=True)
+        subprocess.run(["openssl", "pkcs12", "-export", "-in", str(cert), "-inkey", str(key),
+                        "-out", str(bundle), "-name", "moonnut-fixture", "-passout", "pass:"],
+                       check=True, capture_output=True)
+        subprocess.run([pk12util, "-i", str(bundle), "-d", db, "-W", "", "-K", ""],
+                       check=True, capture_output=True)
+        directives = f'CERTPATH {db}\nCERTIDENT "moonnut-fixture" ""\nCERTREQUEST 0\n'
+        backend = "NSS"
+    elif "libssl" in links:
+        bundle = folder / "server.pem"
+        bundle.write_bytes(cert.read_bytes() + key.read_bytes())
+        directives = f"CERTFILE {bundle}\n"
+        backend = "OpenSSL"
+    else:
+        raise RuntimeError("The NUT integration requires an OpenSSL or NSS-enabled upsd")
+    return cert, directives + "DISABLE_WEAK_SSL true\n", backend
+
+
 def main():
     if os.geteuid() == 0:
         raise RuntimeError("Run as a regular user, not root")
@@ -73,11 +112,15 @@ def main():
         (folder / "demo.dev").write_text(
             "ups.mfr: moonnut-fixture\n" +
             "".join(f"{key}: {value}\n" for key, value in EXPECTED.items()))
+        cert, tls_directives, backend = configure_tls(folder, upsd)
+        password = secrets.token_hex(24)
         (folder / "upsd.conf").write_text(
-            f"LISTEN 127.0.0.1 {port}\nSTATEPATH {folder}\nMAXAGE 15\n")
-        (folder / "upsd.users").write_text("")
+            f"LISTEN 127.0.0.1 {port}\nSTATEPATH {folder}\nMAXAGE 15\n" + tls_directives)
+        # No actions or instant commands are granted to this disposable account.
+        (folder / "upsd.users").write_text(f"[fixture]\n  password = {password}\n")
         for file in folder.iterdir():
-            file.chmod(0o600)
+            if file.is_file():
+                file.chmod(0o600)
         with (folder / "process.log").open("w+") as log:
             try:
                 username = getpass.getuser()
@@ -118,7 +161,24 @@ def main():
                     assert query("--get", "demo", name) == expected, name
                 print("upsd integration: LIST UPS, LIST VAR and GET VAR agree with NUT upsc")
                 print("Synthetic device only: status=OL CHRG, charge=100%, runtime=600s")
-                print("Transport scope: anonymous loopback plaintext; TLS is tested separately")
+                auth_env = dict(env, MOONNUT_USERNAME="fixture", MOONNUT_PASSWORD=password)
+                trusted = [str(BINARY), "localhost", str(port), "--ca", str(cert)]
+                secure = run(trusted + ["--get", "demo", "ups.status"], auth_env)
+                assert secure.returncode == 0 and secure.stdout.strip() == EXPECTED["ups.status"], "verified NUT TLS/auth GET failed"
+                secure_devices = run(trusted, auth_env)
+                assert secure_devices.returncode == 0 and secure_devices.stdout.strip() == "demo\tSynthetic demo UPS", "verified NUT TLS/auth LIST UPS failed"
+                secure_variables = run(trusted + ["--vars", "demo"], auth_env)
+                assert secure_variables.returncode == 0, "verified NUT TLS/auth LIST VAR failed"
+                secure_values = dict(line.split("\t", 1) for line in secure_variables.stdout.strip().splitlines())
+                assert all(secure_values.get(k) == v for k, v in EXPECTED.items())
+                wrong_password = run(trusted, dict(auth_env, MOONNUT_PASSWORD="wrong-fixture-password"))
+                assert wrong_password.returncode != 0, "NUT authentication rejection was ignored"
+                untrusted = run([str(BINARY), "localhost", str(port)], auth_env)
+                assert untrusted.returncode != 0, "untrusted NUT certificate was accepted"
+                wrong_host = run([str(BINARY), "127.0.0.1", str(port), "--ca", str(cert)], auth_env)
+                assert wrong_host.returncode != 0, "NUT certificate hostname mismatch was accepted"
+                print(f"NUT {backend} STARTTLS: verified authentication and 3 rejection paths passed")
+                print("Transport scope: loopback plaintext and authenticated TLS; no physical device")
             except Exception:
                 log.flush()
                 log.seek(0)
