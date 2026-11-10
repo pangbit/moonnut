@@ -74,7 +74,7 @@ def configure_tls(folder, upsd):
                        check=True, capture_output=True)
         subprocess.run([pk12util, "-i", str(bundle), "-d", db, "-W", "", "-K", ""],
                        check=True, capture_output=True)
-        directives = f'CERTPATH {db}\nCERTIDENT "moonnut-fixture" ""\nCERTREQUEST 0\n'
+        directives = f'CERTPATH {database}\nCERTIDENT "moonnut-fixture" ""\n'
         backend = "NSS"
     elif "libssl" in links:
         bundle = folder / "server.pem"
@@ -104,7 +104,8 @@ def main():
     with tempfile.TemporaryDirectory(prefix="moonnut-upsd-") as folder:
         folder = Path(folder)
         env.update(NUT_CONFPATH=str(folder), NUT_STATEPATH=str(folder),
-                   NUT_ALTPIDPATH=str(folder), NUT_QUIET_INIT_UPSNOTIFY="true")
+                   NUT_ALTPIDPATH=str(folder), NUT_QUIET_INIT_UPSNOTIFY="true",
+                   NSS_DEFAULT_DB_TYPE="sql")
         (folder / "ups.conf").write_text(
             f"statepath = {folder}\n[demo]\n  driver = dummy-ups\n"
             f"  port = {folder / 'demo.dev'}\n  mode = dummy-once\n"
