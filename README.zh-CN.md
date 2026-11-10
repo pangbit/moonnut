@@ -27,15 +27,14 @@ Apache-2.0 开源，刻意保持只读。
 依赖 MoonBit native 和 `moonbitlang/async` 0.22.4。本地已验证 macOS arm64、
 `moon` 0.1.20261104 / `moonc` v0.10.20+65efd5b93。
 网络与 TLS 使用官方 [async 库](https://github.com/moonbitlang/async)，需满足其
-原生平台/OpenSSL 依赖。Linux CI 已配置，不能在发布提交的 CI 通过前宣称 Linux 已验证。
+原生平台/OpenSSL 依赖。原生测试与回环 TLS 检查也已在 Ubuntu GitHub Actions 通过。
 
 ```sh
 # 离线示例，不连接设备
 moon run examples/parse --target native
 ```
 
-注册表版本发布后可执行 `moon add pangbit/moonnut`；发布前使用检出源码或本地
-workspace 依赖。在 `moon.pkg` 导入 `pangbit/moonnut`。含 `async fn main` 的包
+执行 `moon add pangbit/moonnut` 安装，也可使用检出源码或本地 workspace 依赖。在 `moon.pkg` 导入 `pangbit/moonnut`。含 `async fn main` 的包
 还需导入 `moonbitlang/async`。
 
 原生异步应用中创建 `Client::new("ups.example.invalid")`，然后调用

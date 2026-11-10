@@ -1,6 +1,6 @@
 # Changelog / 更新记录
 
-## Unreleased / 未发布
+## 0.1.0 (2026-11-10)
 
 - Initial native read-only NUT client: LIST UPS, LIST VAR and GET VAR.
 - Verified STARTTLS, optional TLS-only authentication, bounded responses and timeouts.

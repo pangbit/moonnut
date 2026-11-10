@@ -28,16 +28,15 @@ UPS or real `upsd` deployment has been verified; no hardware-compatibility claim
 Requires MoonBit native and `moonbitlang/async` 0.22.4. Verified locally with
 `moon` 0.1.20261104 / `moonc` v0.10.20+65efd5b93 on macOS arm64.
 Networking and TLS use the official [async library](https://github.com/moonbitlang/async),
-including its native platform/OpenSSL requirements. Linux CI is configured but must
-be checked on the published commit before claiming a Linux pass.
+including its native platform/OpenSSL requirements. The native suite and loopback TLS checks also pass on Ubuntu GitHub Actions.
 
 ```sh
 # Offline; no device access
 moon run examples/parse --target native
 ```
 
-After a registry release is available: `moon add pangbit/moonnut`. Before publication,
-use a checkout/local workspace dependency. Import `pangbit/moonnut` in `moon.pkg`;
+Install with `moon add pangbit/moonnut` or use a local workspace dependency.
+Import `pangbit/moonnut` in `moon.pkg`;
 a package with `async fn main` must also import `moonbitlang/async`.
 
 ```mbt check
