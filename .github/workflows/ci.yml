@@ -10,7 +10,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install native dependencies
-        run: sudo apt-get update && sudo apt-get install -y build-essential libssl-dev zlib1g-dev
+        run: sudo apt-get update && sudo apt-get install -y build-essential libssl-dev zlib1g-dev nut-server nut-client
       - name: Install verified MoonBit version
         run: curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash -s -- '0.10.20+65efd5b93'
       - name: Set toolchain path
@@ -23,6 +23,7 @@ jobs:
           moon test --target native
           moon build --target native
           python3 scripts/tls_smoke.py
+          python3 scripts/upsd_integration.py
           moon info --target native
           moon fmt --check
           git diff --exit-code -- '*.mbti' '*.mbt' moon.mod moon.pkg

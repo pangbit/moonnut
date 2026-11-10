@@ -1,5 +1,12 @@
 # Changelog / 更新记录
 
+## Unreleased / 未发布
+
+- Add an isolated NUT upsd + dummy-ups interoperability demo and CI check.
+- Extend the query example with variable listing and single-variable reads.
+- 新增隔离 NUT upsd + dummy-ups 互操作演示与 CI 检查。
+- 查询示例新增变量列表和单变量读取。
+
 ## 0.1.0 (2026-11-10)
 
 - Initial native read-only NUT client: LIST UPS, LIST VAR and GET VAR.
