@@ -32,6 +32,14 @@ def locate(name, candidates=()):
     for candidate in candidates:
         if Path(candidate).is_file():
             return candidate
+    # Distribution layouts differ, including /usr/libexec/nut on newer Ubuntu.
+    if name == "dummy-ups" and shutil.which("dpkg-query"):
+        result = subprocess.run(["dpkg-query", "--listfiles", "nut-server"],
+                                capture_output=True, text=True, timeout=5)
+        for entry in result.stdout.splitlines():
+            path = Path(entry)
+            if path.name == name and path.is_file():
+                return str(path)
     raise RuntimeError(f"{name} is required; install NUT 2.8+ in an isolated development environment")
 
 
@@ -45,7 +53,7 @@ def main():
     if not BINARY.is_file():
         raise RuntimeError("Run moon build --target native first")
     upsd = locate("upsd", ("/usr/sbin/upsd",))
-    driver = locate("dummy-ups", ("/lib/nut/dummy-ups", "/usr/lib/nut/dummy-ups"))
+    driver = locate("dummy-ups", ("/lib/nut/dummy-ups", "/usr/lib/nut/dummy-ups", "/usr/libexec/nut/dummy-ups"))
     upsc = locate("upsc")
     env = {k: v for k, v in os.environ.items()
            if not k.startswith(("MOONNUT_", "NUT_"))}
