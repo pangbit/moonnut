@@ -2,6 +2,9 @@
 
 ## Unreleased / 未发布
 
+- Add machine-readable JSON query output with UTF-8 and escaping regression checks.
+- 新增机器可读 JSON 查询输出，并验证 UTF-8、转义与错误退出行为。
+
 - Verify socket closure after cancellation/timeouts and concurrent response isolation.
 - 验证取消/超时后的连接关闭，以及并发查询响应隔离。
 

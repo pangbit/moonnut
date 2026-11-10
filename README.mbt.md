@@ -106,6 +106,21 @@ moon run examples/query --target native -- ups.example.invalid 3493 --vars demo
 moon run examples/query --target native -- ups.example.invalid 3493 --get demo ups.status
 ```
 
+For monitoring consumers, add `--json` to any query operation. Device and variable
+lists become arrays of named objects; a single read includes the UPS, variable
+name and string value. Quoting, backslashes, tabs and Unicode are encoded by the
+standard JSON serializer. Values remain strings, including numeric-looking values.
+Parse stdout only after a zero exit status; failures have redacted text and a
+nonzero exit status rather than a misleading successful JSON result.
+
+```sh
+moon run examples/query --target native -- ups.example.invalid 3493 --get demo ups.status --json
+```
+
+```json
+{"ups":"demo","name":"ups.status","value":"OL CHRG"}
+```
+
 ## API choices
 
 `Client::new` options:
@@ -167,6 +182,7 @@ moon check --target native
 moon test --target native
 moon build --target native
 python3 scripts/tls_smoke.py
+python3 scripts/cli_json_smoke.py
 # On isolated Linux with NUT 2.8+ installed
 python3 scripts/upsd_integration.py
 moon info --target native

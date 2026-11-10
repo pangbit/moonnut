@@ -84,6 +84,20 @@ moon run examples/query --target native -- ups.example.invalid 3493 --vars demo
 moon run examples/query --target native -- ups.example.invalid 3493 --get demo ups.status
 ```
 
+监控程序可为任意查询增加 `--json`：设备/变量列表输出带字段名的对象数组，
+单变量读取输出 UPS、变量名和字符串值。标准 JSON 序列化器负责引号、反斜杠、
+制表符和 Unicode 的编码；看起来像数字的值也仍是字符串。
+只有退出码为零时才解析标准输出；失败时输出脱敏文本并返回非零退出码，
+不伪装成成功的 JSON 数据。
+
+```sh
+moon run examples/query --target native -- ups.example.invalid 3493 --get demo ups.status --json
+```
+
+```json
+{"ups":"demo","name":"ups.status","value":"OL CHRG"}
+```
+
 ## API 约定
 
 `Client::new` 参数：
@@ -137,6 +151,7 @@ moon check --target native
 moon test --target native
 moon build --target native
 python3 scripts/tls_smoke.py
+python3 scripts/cli_json_smoke.py
 # 在已安装 NUT 2.8+ 的隔离 Linux 环境中
 python3 scripts/upsd_integration.py
 moon info --target native

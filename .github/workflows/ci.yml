@@ -23,6 +23,7 @@ jobs:
           moon test --target native
           moon build --target native
           python3 scripts/tls_smoke.py
+          python3 scripts/cli_json_smoke.py
           python3 scripts/upsd_integration.py
           moon info --target native
           moon fmt --check

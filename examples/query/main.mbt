@@ -8,7 +8,7 @@ priv enum Operation {
 ///|
 fn usage() -> Unit {
   println(
-    "Usage: query HOST PORT [--plaintext | --ca FILE] [--vars UPS | --get UPS VARIABLE]",
+    "Usage: query HOST PORT [--plaintext | --ca FILE] [--vars UPS | --get UPS VARIABLE] [--json]",
   )
   println("TLS with certificate and hostname verification is the default.")
 }
@@ -26,9 +26,14 @@ async fn main {
     let mut security_set = false
     let mut operation = Ups
     let mut operation_set = false
+    let mut json_output = false
     let mut index = 3
     while index < args.length() {
       match args[index] {
+        "--json" if !json_output => {
+          json_output = true
+          index += 1
+        }
         "--plaintext" if !security_set => {
           security = @moonnut.Plaintext
           security_set = true
@@ -63,15 +68,56 @@ async fn main {
       password?=@env.get_env_var("MOONNUT_PASSWORD"),
     )
     match operation {
-      Ups =>
-        for ups in client.list_ups() {
-          println(ups.name + "\t" + ups.description)
+      Ups => {
+        let devices = client.list_ups()
+        if json_output {
+          let value = @json.Json::array(
+            devices.map(ups => {
+              @json.Json::object({
+                "name": @json.Json::string(ups.name),
+                "description": @json.Json::string(ups.description),
+              })
+            }),
+          )
+          println(value.stringify())
+        } else {
+          for ups in devices {
+            println(ups.name + "\t" + ups.description)
+          }
         }
-      Vars(ups) =>
-        for variable in client.list_vars(ups) {
-          println(variable.name + "\t" + variable.value)
+      }
+      Vars(ups) => {
+        let variables = client.list_vars(ups)
+        if json_output {
+          let value = @json.Json::array(
+            variables.map(variable => {
+              @json.Json::object({
+                "name": @json.Json::string(variable.name),
+                "value": @json.Json::string(variable.value),
+              })
+            }),
+          )
+          println(value.stringify())
+        } else {
+          for variable in variables {
+            println(variable.name + "\t" + variable.value)
+          }
         }
-      Var(ups, name) => println(client.get_var(ups, name))
+      }
+      Var(ups, name) => {
+        let value = client.get_var(ups, name)
+        if json_output {
+          println(
+            @json.Json::object({
+              "ups": @json.Json::string(ups),
+              "name": @json.Json::string(name),
+              "value": @json.Json::string(value),
+            }).stringify(),
+          )
+        } else {
+          println(value)
+        }
+      }
     }
   } catch {
     // Do not echo credentials, arguments or untrusted responses in a CLI error.
