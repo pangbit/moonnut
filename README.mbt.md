@@ -13,7 +13,7 @@ performed manually by the maintainer; the existing 0.1.0 release is unchanged.
 
 - `LIST UPS`, `LIST VAR` and `GET VAR`, with typed device/variable results.
 - Verified STARTTLS by default, using system roots or an explicit PEM CA file.
-- Optional `USERNAME` / `PASSWORD` authentication **only after verified TLS**.
+- Optional `USERNAME` / `PASSWORD` submission **only after verified TLS**.
 - One fresh connection per query; no shared stream, pooling, automatic retries or downgrade.
 - Whole-operation timeout, bounded line length, total response bytes and list rows.
 - NUT-style quoting and escaping, strict reply identity and list boundary checks.
@@ -29,8 +29,9 @@ Ubuntu CI. All three read operations agree with official `upsc`
 ([verified run](https://github.com/pangbit/moonnut/actions/runs/42835044823)).
 A common `LIST UPS` fixture is also compared with PyNUT in a separate process.
 No physical UPS or production deployment has been verified. The actual-daemon
-suite also exercises verified STARTTLS authentication, incorrect credentials,
-untrusted certificates and hostname mismatch, using the installed NUT TLS backend.
+suite also exercises verified STARTTLS with supplied credentials, the server's
+incorrect-credential behavior, untrusted certificates and hostname mismatch,
+using the installed NUT TLS backend.
 The CI log identifies the backend tested; this is not a claim about every NUT
 TLS build or a hardware certification.
 
@@ -62,7 +63,8 @@ test "decode a synthetic NUT response" {
 In a native async application, create `Client::new("ups.example.invalid")`, then
 call `list_ups()`, `list_vars("demo")` or `get_var("demo", "ups.status")`. Values
 remain strings; a status like `OL CHRG` must not be treated as a single enum value.
-Each call opens, authenticates and closes its own connection, including on failure.
+Each call opens a connection, optionally submits credentials over verified TLS,
+and closes the connection, including on failure.
 
 ```sh
 # Only with authorization for the explicitly named target
@@ -93,8 +95,8 @@ should use a credential provider appropriate to their deployment.
    then stops only its own child processes and removes its temporary files.
    It does not use the system's NUT configuration, a service manager, a physical
    device, or a persistent account. It checks both anonymous loopback plaintext
-   and verified STARTTLS with a disposable read-only account. It also rejects a
-   wrong password, untrusted CA and wrong hostname. OpenSSL is required; NSS-backed
+   and verified STARTTLS with a disposable read-only account. It observes the
+   server's incorrect-password behavior and rejects an untrusted CA and wrong hostname. OpenSSL is required; NSS-backed
    NUT builds additionally need `libnss3-tools`. Keys and accounts remain temporary.
 3. Run `python3 scripts/tls_smoke.py` to demonstrate accepted trusted TLS and
    rejection of untrusted certificates and wrong hostnames before credentials.
@@ -132,7 +134,7 @@ moon run examples/query --target native -- ups.example.invalid 3493 --get demo u
 | `username`, `password` | absent | Paired credentials, TLS only |
 | `timeout_ms` | `5000` | DNS through the complete response |
 | `max_line_bytes` | `65536` | Bytes before a line's LF delimiter |
-| `max_response_bytes` | `4194304` | Total received protocol bytes, including authentication replies |
+| `max_response_bytes` | `4194304` | Total received protocol bytes, including credential-exchange replies |
 | `max_rows` | `4096` | Rows in a list response |
 
 `Plaintext` must be explicitly selected and cannot be combined with credentials.
@@ -161,6 +163,13 @@ RFC 9271 describes mandatory authentication; historical NUT installations also
 allow anonymous read-only queries. moonnut permits anonymous reads but respects
 `ERR ACCESS-DENIED`; it does not claim the RFC's entire security/profile compliance.
 It does not depend on newer command aliases such as `PROTVER` or `PRIMARY`.
+
+**Credential acknowledgment is not authentication proof.** NUT's `PASSWORD` command
+stores a password for later commands that require authorization. A server can
+reply `OK` to an incorrect password and still allow anonymous read-only queries,
+as observed with NUT 2.8.4. moonnut propagates any server rejection, but successful
+reads do not certify the credentials. It deliberately does not use `LOGIN` as a
+password probe: NUT reserves that command for power-consumer/upsmon coordination.
 
 NUT uses parseconf-style tokens, not JSON or shell syntax: backslash escapes the
 next character, double quotes group tokens, single quotes do not, unquoted `=` is
@@ -195,7 +204,8 @@ MoonBit tests cover parsing, injection rejection, fragmented/coalesced replies,
 error handling, identifier matching, empty lists, EOF, TLS refusal, timeout and
 resource bounds. Lifecycle tests verify server-observed EOF after timeout or
 cancellation, a successful subsequent query, and independent concurrent replies. The TLS script creates disposable loopback certificates and
-checks trusted CA, encrypted authentication, unknown CA and wrong hostname.
+checks trusted CA, encrypted credential exchange, server credential rejection,
+unknown CA and wrong hostname.
 No test needs a real UPS, account or persistent credential. Registry publication
 is a separate manual maintainer step, not part of these checks or CI. See
 [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md) and [LICENSE](LICENSE).

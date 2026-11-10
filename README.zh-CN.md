@@ -11,7 +11,7 @@ GitHub main 包含未发布的演示改进。Mooncakes 由维护者手动发布�
 
 - `LIST UPS`、`LIST VAR`、`GET VAR`，返回设备和变量结构。
 - 默认使用 STARTTLS，验证证书链及主机名，可用系统根证书或指定 PEM CA 文件。
-- 可选 `USERNAME` / `PASSWORD`，只在 TLS 验证成功后发送。
+- 可选提交 `USERNAME` / `PASSWORD`，只在 TLS 验证成功后发送。
 - 每次查询独立连接，不共享协议流，不做连接池、自动重试或 TLS 降级。
 - 整个操作的超时、单行长度、响应总字节数、列表行数均有限制。
 - 支持 NUT 引号和转义规则，校验响应标识及列表边界。
@@ -24,7 +24,7 @@ GitHub main 包含未发布的演示改进。Mooncakes 由维护者手动发布�
 `upsd` + `dummy-ups` 程序与虚拟 UPS。三种只读操作均与官方 `upsc` 一致
 （[已验证 CI](https://github.com/pangbit/moonnut/actions/runs/42835044823)）。
 另与独立进程中的 PyNUT 对照共同的 `LIST UPS` 场景。未验证物理 UPS 或生产部署；
-真实守护进程测试还覆盖验证 STARTTLS 后认证、错误密码、未知证书及错误主机名，
+真实守护进程测试还覆盖验证 STARTTLS 后提交凭据、服务端对错误密码的行为、未知证书及错误主机名，
 采用当前安装的 NUT TLS 后端。CI 日志注明具体后端，不代表所有 NUT TLS 构建或硬件认证。
 
 ## 快速开始
@@ -45,7 +45,7 @@ moon run examples/parse --target native
 原生异步应用中创建 `Client::new("ups.example.invalid")`，然后调用
 `list_ups()`、`list_vars("demo")`、`get_var("demo", "ups.status")`。
 变量值保留为字符串，例如 `OL CHRG` 不能当成单一枚举值。
-每次操作独立建立、认证并关闭连接，失败也会关闭。
+每次操作独立建立连接，可选在验证过的 TLS 中提交凭据，然后关闭连接，失败也会关闭。
 
 ```sh
 # 仅针对已授权且明确指定的服务器
@@ -72,7 +72,7 @@ moon run examples/query --target native -- ups.example.invalid 3493 --ca /path/t
    仅绑定回环地址；将 moonnut 的 `LIST UPS`、`LIST VAR`、`GET VAR` 与官方 `upsc`
    对照。结束后只停止自己创建的子进程并清理临时文件，不使用系统 NUT 配置、
    服务管理器、物理设备或长期账号。它同时验证匿名回环明文与使用临时只读账号的
-   STARTTLS，并拒绝错误密码、未知 CA 及错误主机名。需要 OpenSSL；NSS 后端构建
+   STARTTLS，观察服务端对错误密码的行为，并拒绝未知 CA 及错误主机名。需要 OpenSSL；NSS 后端构建
    还需 `libnss3-tools`。密钥和账号均为临时测试产物。
 3. 运行 `python3 scripts/tls_smoke.py`，演示接受可信 TLS，以及在发送凭据前
    拒绝未知证书与错误主机名。
@@ -134,6 +134,11 @@ RFC 9271 描述强制认证，但历史 NUT 部署允许匿名只读查询。moo
 遵守 `ERR ACCESS-DENIED`，不宣称符合 RFC 的全部安全要求。
 不依赖 `PROTVER`、`PRIMARY` 等新别名。
 
+**凭据接收确认不是认证证明。** NUT 的 `PASSWORD` 命令只是保存密码，供后续需要授权
+的命令使用。服务端可能对错误密码返回 `OK`，随后仍允许匿名只读查询，NUT 2.8.4
+实测即为如此。moonnut 会传播服务端明确返回的拒绝，但读取成功不证明密码正确。
+不会为探测密码而使用 `LOGIN`，因为 NUT 将该命令用于供电设备消费者与 upsmon 协调。
+
 NUT 使用 parseconf 风格，不是 JSON 或 shell：反斜杠转义下一个字符，双引号分组，
 单引号不分组；未加引号的 `=` 独立成词，`#` 开始注释。编码器也会转义 `#`，
 兼容旧解析器。接受 LF 和 CRLF，不支持物理换行续行。接受 UTF-8 描述作为对文档
@@ -162,7 +167,7 @@ python3 scripts/reference_smoke.py /external/path/PyNUT.py
 
 MoonBit 测试覆盖解析、命令注入防护、分片/合并响应、错误处理、标识匹配、空列表、
 EOF、TLS 拒绝、超时与资源上限。生命周期测试确认超时或取消后服务端收到 EOF、
-后续查询正常，以及并发查询响应相互隔离。TLS 脚本生成临时回环证书，验证可信 CA、加密认证、
+后续查询正常，以及并发查询响应相互隔离。TLS 脚本生成临时回环证书，验证可信 CA、加密提交凭据、服务端凭据拒绝、
 未知 CA 和错误主机名。测试不需要真实 UPS、账号或长期凭据。注册表发布是维护者另行手动执行的步骤，
 不属于上述检查或 CI。
 另见 [贡献指南](CONTRIBUTING.md)、[安全说明](SECURITY.md)、[许可证](LICENSE)。

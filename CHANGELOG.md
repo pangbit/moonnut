@@ -2,14 +2,17 @@
 
 ## Unreleased / 未发布
 
+- Clarify deferred NUT credential validation and verify explicit server rejection over TLS.
+- 澄清 NUT 延迟验证凭据的语义，验证 TLS 内服务端明确拒绝时客户端停止。
+
 - Add machine-readable JSON query output with UTF-8 and escaping regression checks.
 - 新增机器可读 JSON 查询输出，并验证 UTF-8、转义与错误退出行为。
 
 - Verify socket closure after cancellation/timeouts and concurrent response isolation.
 - 验证取消/超时后的连接关闭，以及并发查询响应隔离。
 
-- Exercise actual NUT STARTTLS authentication and credential/certificate rejection paths.
-- 增加真实 NUT STARTTLS 认证与凭据/证书拒绝路径验证。
+- Exercise actual NUT STARTTLS credential exchange and certificate rejection paths.
+- 增加真实 NUT STARTTLS 凭据交换与证书拒绝路径验证。
 
 - Add an isolated NUT upsd + dummy-ups interoperability demo and CI check.
 - Extend the query example with variable listing and single-variable reads.

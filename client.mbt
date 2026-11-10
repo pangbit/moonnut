@@ -23,7 +23,9 @@ pub struct Client {
 }
 
 ///|
-/// The timeout covers DNS, connection, TLS, authentication and the whole query.
+/// The timeout covers DNS, connection, TLS, credential exchange and the whole query.
+/// NUT may accept USERNAME/PASSWORD without validating them until a privileged
+/// command. A successful read does not prove that credentials are correct.
 pub fn Client::new(
   host : String,
   port~ : Int32 = 3493,

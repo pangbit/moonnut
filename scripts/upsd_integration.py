@@ -173,13 +173,19 @@ def main():
                 secure_values = dict(line.split("\t", 1) for line in secure_variables.stdout.strip().splitlines())
                 assert all(secure_values.get(k) == v for k, v in EXPECTED.items())
                 wrong_password = run(trusted, dict(auth_env, MOONNUT_PASSWORD="wrong-fixture-password"))
-                assert wrong_password.returncode != 0, "NUT authentication rejection was ignored"
+                # NUT stores USERNAME/PASSWORD for later privileged commands.
+                # Anonymous reads may still succeed; OK is not an auth verdict.
+                if wrong_password.returncode == 0:
+                    assert wrong_password.stdout.strip() == "demo\tSynthetic demo UPS"
+                    print("NUT permits read-only queries after a wrong password; credentials are not proven valid")
+                else:
+                    print("This NUT policy rejects the supplied incorrect credentials")
                 untrusted = run([str(BINARY), "localhost", str(port)], auth_env)
                 assert untrusted.returncode != 0, "untrusted NUT certificate was accepted"
                 wrong_host = run([str(BINARY), "127.0.0.1", str(port), "--ca", str(cert)], auth_env)
                 assert wrong_host.returncode != 0, "NUT certificate hostname mismatch was accepted"
-                print(f"NUT {backend} STARTTLS: verified authentication and 3 rejection paths passed")
-                print("Transport scope: loopback plaintext and authenticated TLS; no physical device")
+                print(f"NUT {backend} STARTTLS: credentialed reads and certificate rejection passed")
+                print("Transport scope: loopback plaintext and verified TLS with credentials; no physical device")
             except Exception:
                 log.flush()
                 log.seek(0)

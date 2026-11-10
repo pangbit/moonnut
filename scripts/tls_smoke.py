@@ -29,7 +29,7 @@ def line(sock):
     return bytes(result)
 
 
-def run_case(context, *, host, ca=None, auth=False, success=True):
+def run_case(context, *, host, ca=None, auth=False, success=True, reject_credentials=False):
     errors = []
     commands = []
     listener = socket.socket()
@@ -55,6 +55,10 @@ def run_case(context, *, host, ca=None, auth=False, success=True):
                                 tls.sendall(b"OK\n")
                                 commands.append(line(tls))
                                 assert commands[-1] == b'PASSWORD "fixture-only"\n'
+                                if reject_credentials:
+                                    tls.sendall(b"ERR ACCESS-DENIED\n")
+                                    assert tls.recv(1) == b"", "query sent after credential rejection"
+                                    return
                                 tls.sendall(b"OK\n")
                             commands.append(line(tls))
                             assert commands[-1] == b"LIST UPS\n"
@@ -80,6 +84,9 @@ def run_case(context, *, host, ca=None, auth=False, success=True):
     assert (proc.returncode == 0) == success, proc.stdout + proc.stderr
     if success:
         assert proc.stdout.strip() == "demo\tTest UPS", repr(proc.stdout)
+    elif reject_credentials:
+        assert commands == [b"STARTTLS\n", b'USERNAME "fixture-user"\n',
+                            b'PASSWORD "fixture-only"\n'], "query sent after credential rejection"
     else:
         assert commands == [b"STARTTLS\n"], "query or credentials sent before trust verification"
 
@@ -99,9 +106,10 @@ def main():
         context.load_cert_chain(cert, key)
         run_case(context, host="localhost", ca=cert)
         run_case(context, host="localhost", ca=cert, auth=True)
+        run_case(context, host="localhost", ca=cert, auth=True, reject_credentials=True, success=False)
         run_case(context, host="localhost", auth=True, success=False)
         run_case(context, host="127.0.0.1", ca=cert, auth=True, success=False)
-    print("TLS smoke: trusted CA, encrypted auth, untrusted CA, wrong hostname passed (4 cases)")
+    print("TLS smoke: trusted CA, encrypted credentials, server rejection, untrusted CA, wrong hostname passed (5 cases)")
 
 
 if __name__ == "__main__":

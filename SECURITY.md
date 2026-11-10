@@ -21,3 +21,10 @@ secrets, private endpoints or an uncoordinated exploit. Use synthetic reproducti
 
 发现疑似漏洞请通过维护者公开个人资料中的联系方式私下联系。不要在公开 issue 中
 贴出秘密、私有端点或未协调披露的利用方式。请使用合成复现。
+
+NUT may acknowledge USERNAME/PASSWORD without validating them until an authorized
+command is requested. Read-only success is not proof of a correct password.
+moonnut does not issue LOGIN or power-management commands to probe credentials.
+
+NUT 可能先确认接收 USERNAME/PASSWORD，到需要授权的命令才验证；只读成功不证明
+密码正确。moonnut 不使用 LOGIN 或电源管理命令探测凭据。
