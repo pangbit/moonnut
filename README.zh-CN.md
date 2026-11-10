@@ -3,7 +3,9 @@
 [English](README.mbt.md)
 
 面向 **MoonBit native** 的小型 NUT upsd 客户端，独立实现、个人维护、
-Apache-2.0 开源，刻意保持只读。
+Apache-2.0 开源，刻意保持只读。库运行时不依赖 NUT 可执行文件或 Python。
+
+GitHub main 包含未发布的演示改进。Mooncakes 由维护者手动发布，已有 0.1.0 版本保持不变。
 
 ## 功能与安全边界
 
@@ -18,9 +20,12 @@ Apache-2.0 开源，刻意保持只读。
 任意命令接口。它不是电源控制代理，也不是完整 RFC 9271 实现。
 认证会创建临时服务端会话状态；只查询你有权访问的服务器。
 
-**验证范围：** 目前使用合成的本机回环 NUT/TLS 服务，并与独立进程中的 PyNUT
-对照一个共同的 `LIST UPS` 测试场景。尚未验证真实 UPS 或实际 `upsd` 部署，
-不宣称硬件兼容性。
+**验证范围：** 覆盖合成回环 NUT/TLS 服务，以及隔离 Ubuntu CI 中真实 NUT 2.8.4
+`upsd` + `dummy-ups` 程序与虚拟 UPS。三种只读操作均与官方 `upsc` 一致
+（[已验证 CI](https://github.com/pangbit/moonnut/actions/runs/42835044823)）。
+另与独立进程中的 PyNUT 对照共同的 `LIST UPS` 场景。未验证物理 UPS 或生产部署；
+真实守护进程测试目前使用匿名回环明文，TLS 由独立合成 TLS 服务验证，
+不宣称已完成 NUT TLS 后端或硬件认证。
 
 ## 快速开始
 
@@ -51,6 +56,32 @@ moon run examples/query --target native -- ups.example.invalid 3493 --ca /path/t
 查询示例从进程环境读取可选 `MOONNUT_USERNAME`、`MOONNUT_PASSWORD`，不会输出凭据或
 原始错误。不要把真实凭据写进命令、源码、示例、问题单或 Git；实际应用应使用适合其
 部署环境的凭据提供方式。
+
+## 三分钟演示
+
+1. 运行 `moon run examples/parse --target native`，离线解析包含多个状态词的响应，
+   不打开网络连接。
+2. 在已安装 NUT 2.8+（`nut-server`、`nut-client`）的隔离 Linux 开发环境中运行：
+
+   ```sh
+   moon build --target native
+   python3 scripts/upsd_integration.py
+   ```
+
+   脚本使用临时配置启动真实 NUT `upsd` 与 `dummy-ups` 程序，创建合成设备，
+   仅绑定回环地址；将 moonnut 的 `LIST UPS`、`LIST VAR`、`GET VAR` 与官方 `upsc`
+   对照。结束后只停止自己创建的子进程并清理临时文件，不使用系统 NUT 配置、
+   服务管理器、物理设备或长期账号。此项互操作测试使用匿名回环明文，
+   不等于真实服务器 TLS 或硬件认证。
+3. 运行 `python3 scripts/tls_smoke.py`，演示接受可信 TLS，以及在发送凭据前
+   拒绝未知证书与错误主机名。
+
+查询示例也提供针对已授权目标的变量操作：
+
+```sh
+moon run examples/query --target native -- ups.example.invalid 3493 --vars demo
+moon run examples/query --target native -- ups.example.invalid 3493 --get demo ups.status
+```
 
 ## API 约定
 
@@ -105,15 +136,16 @@ moon check --target native
 moon test --target native
 moon build --target native
 python3 scripts/tls_smoke.py
+# 在已安装 NUT 2.8+ 的隔离 Linux 环境中
+python3 scripts/upsd_integration.py
 moon info --target native
 moon fmt --check
 # 可选：官方 PyNUT v2.8.3 模块须放在本仓库之外
 python3 scripts/reference_smoke.py /external/path/PyNUT.py
-# 只校验打包，不发布
-moon publish --dry-run
 ```
 
 MoonBit 测试覆盖解析、命令注入防护、分片/合并响应、错误处理、标识匹配、空列表、
 EOF、TLS 拒绝、超时与资源上限。TLS 脚本生成临时回环证书，验证可信 CA、加密认证、
-未知 CA 和错误主机名。测试不需要真实 UPS、账号或长期凭据。
+未知 CA 和错误主机名。测试不需要真实 UPS、账号或长期凭据。注册表发布是维护者另行手动执行的步骤，
+不属于上述检查或 CI。
 另见 [贡献指南](CONTRIBUTING.md)、[安全说明](SECURITY.md)、[许可证](LICENSE)。

@@ -4,6 +4,10 @@
 
 A small, independently implemented **NUT upsd client for MoonBit native**.
 Personally maintained, Apache-2.0 licensed, and deliberately read-only.
+The library does not require a NUT executable or a Python runtime.
+
+GitHub main includes unreleased demonstration work. Mooncakes releases are
+performed manually by the maintainer; the existing 0.1.0 release is unchanged.
 
 ## Scope and safety
 
@@ -19,9 +23,14 @@ or arbitrary-command API. This is not a power-control agent or a complete RFC 92
 implementation. Authentication itself creates temporary server-side session state.
 Only use it against servers you are authorized to query.
 
-**Verification boundary:** tests use synthetic loopback NUT/TLS servers. A common
-`LIST UPS` fixture is also compared with PyNUT in a separate process. No physical
-UPS or real `upsd` deployment has been verified; no hardware-compatibility claim is made.
+**Verification boundary:** tests cover synthetic loopback NUT/TLS servers and
+actual NUT 2.8.4 `upsd` + `dummy-ups` programs with a virtual UPS in isolated
+Ubuntu CI. All three read operations agree with official `upsc`
+([verified run](https://github.com/pangbit/moonnut/actions/runs/42835044823)).
+A common `LIST UPS` fixture is also compared with PyNUT in a separate process.
+No physical UPS or production deployment has been verified. Actual-daemon testing
+currently uses anonymous loopback plaintext; TLS is covered by separate synthetic
+TLS servers, not a claimed NUT TLS/backend or hardware certification.
 
 ## Quick start
 
@@ -63,6 +72,35 @@ moon run examples/query --target native -- ups.example.invalid 3493 --ca /path/t
 process environment. Do not put real credentials in commands, source, examples,
 issues or Git. The example does not print credentials or raw errors. Applications
 should use a credential provider appropriate to their deployment.
+
+## Three-minute demonstration
+
+1. Run `moon run examples/parse --target native`. The offline example decodes a
+   multi-word UPS status without opening a socket.
+2. In an isolated Linux development environment with NUT 2.8+ (`nut-server` and
+   `nut-client`) already installed, run:
+
+   ```sh
+   moon build --target native
+   python3 scripts/upsd_integration.py
+   ```
+
+   The script starts the actual NUT `upsd` and `dummy-ups` programs with disposable
+   configuration and a synthetic device, bound only to loopback. It compares
+   moonnut's `LIST UPS`, `LIST VAR` and `GET VAR` results with official `upsc`,
+   then stops only its own child processes and removes its temporary files.
+   It does not use the system's NUT configuration, a service manager, a physical
+   device, or a persistent account. This interoperability check uses anonymous
+   loopback plaintext; it is not a real-server TLS or hardware certification.
+3. Run `python3 scripts/tls_smoke.py` to demonstrate accepted trusted TLS and
+   rejection of untrusted certificates and wrong hostnames before credentials.
+
+The query example also exposes both variable operations for an authorized target:
+
+```sh
+moon run examples/query --target native -- ups.example.invalid 3493 --vars demo
+moon run examples/query --target native -- ups.example.invalid 3493 --get demo ups.status
+```
 
 ## API choices
 
@@ -125,17 +163,18 @@ moon check --target native
 moon test --target native
 moon build --target native
 python3 scripts/tls_smoke.py
+# On isolated Linux with NUT 2.8+ installed
+python3 scripts/upsd_integration.py
 moon info --target native
 moon fmt --check
 # Optional: external official PyNUT v2.8.3 module, kept outside the repository
 python3 scripts/reference_smoke.py /external/path/PyNUT.py
-# Packaging validation only, not a release
-moon publish --dry-run
 ```
 
 MoonBit tests cover parsing, injection rejection, fragmented/coalesced replies,
 error handling, identifier matching, empty lists, EOF, TLS refusal, timeout and
 resource bounds. The TLS script creates disposable loopback certificates and
 checks trusted CA, encrypted authentication, unknown CA and wrong hostname.
-No test needs a real UPS, account or persistent credential. See
+No test needs a real UPS, account or persistent credential. Registry publication
+is a separate manual maintainer step, not part of these checks or CI. See
 [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md) and [LICENSE](LICENSE).
