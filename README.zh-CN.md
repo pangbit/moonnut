@@ -146,7 +146,8 @@ python3 scripts/reference_smoke.py /external/path/PyNUT.py
 ```
 
 MoonBit 测试覆盖解析、命令注入防护、分片/合并响应、错误处理、标识匹配、空列表、
-EOF、TLS 拒绝、超时与资源上限。TLS 脚本生成临时回环证书，验证可信 CA、加密认证、
+EOF、TLS 拒绝、超时与资源上限。生命周期测试确认超时或取消后服务端收到 EOF、
+后续查询正常，以及并发查询响应相互隔离。TLS 脚本生成临时回环证书，验证可信 CA、加密认证、
 未知 CA 和错误主机名。测试不需要真实 UPS、账号或长期凭据。注册表发布是维护者另行手动执行的步骤，
 不属于上述检查或 CI。
 另见 [贡献指南](CONTRIBUTING.md)、[安全说明](SECURITY.md)、[许可证](LICENSE)。

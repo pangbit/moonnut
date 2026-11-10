@@ -2,6 +2,9 @@
 
 ## Unreleased / 未发布
 
+- Verify socket closure after cancellation/timeouts and concurrent response isolation.
+- 验证取消/超时后的连接关闭，以及并发查询响应隔离。
+
 - Exercise actual NUT STARTTLS authentication and credential/certificate rejection paths.
 - 增加真实 NUT STARTTLS 认证与凭据/证书拒绝路径验证。
 

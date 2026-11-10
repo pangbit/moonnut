@@ -177,7 +177,8 @@ python3 scripts/reference_smoke.py /external/path/PyNUT.py
 
 MoonBit tests cover parsing, injection rejection, fragmented/coalesced replies,
 error handling, identifier matching, empty lists, EOF, TLS refusal, timeout and
-resource bounds. The TLS script creates disposable loopback certificates and
+resource bounds. Lifecycle tests verify server-observed EOF after timeout or
+cancellation, a successful subsequent query, and independent concurrent replies. The TLS script creates disposable loopback certificates and
 checks trusted CA, encrypted authentication, unknown CA and wrong hostname.
 No test needs a real UPS, account or persistent credential. Registry publication
 is a separate manual maintainer step, not part of these checks or CI. See
