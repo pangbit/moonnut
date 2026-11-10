@@ -21,9 +21,10 @@ GitHub main 包含未发布的演示改进。Mooncakes 由维护者手动发布�
 认证会创建临时服务端会话状态；只查询你有权访问的服务器。
 
 **验证范围：** 覆盖合成回环 NUT/TLS 服务，以及隔离 Ubuntu CI 中真实 NUT 2.8.4
-`upsd` + `dummy-ups` 程序与虚拟 UPS。三种只读操作均与官方 `upsc` 一致
-（[已验证 CI](https://github.com/pangbit/moonnut/actions/runs/42835044823)）。
-另与独立进程中的 PyNUT 对照共同的 `LIST UPS` 场景。未验证物理 UPS 或生产部署；
+`upsd` + `dummy-ups` 程序与虚拟 UPS。测试将三种只读操作与官方 `upsc` 对照，
+并让固定版本 PyNUT 在独立进程中对同一守护进程查询设备/变量列表。
+详见[对照范围及复现步骤](docs/comparison.md#中文)与
+[CI 结果](https://github.com/pangbit/moonnut/actions/workflows/ci.yml)。未验证物理 UPS 或生产部署；
 真实守护进程测试还覆盖验证 STARTTLS 后提交凭据、服务端对错误密码的行为、未知证书及错误主机名，
 采用当前安装的 NUT TLS 后端。CI 日志注明具体后端，不代表所有 NUT TLS 构建或硬件认证。
 
@@ -145,8 +146,10 @@ NUT 使用 parseconf 风格，不是 JSON 或 shell：反斜杠转义下一个�
 所述 ASCII 协议的扩展；拒绝非法 UTF-8 与控制字符。
 
 本项目为原创 MoonBit 实现，不是 PyNUT 移植。PyNUT 使用 GPL-3.0-or-later，
-本仓库不复制、不内嵌、不链接其源码。可选黑盒测试在独立进程中调用其公共 API，
-仅对照共同合成场景中的 `LIST UPS` 名称和描述，不代表完整解析器或真实守护进程兼容。
+本仓库不复制、不内嵌、不链接其源码。独立进程仅调用其公共 API，CI 下载固定提交、
+SHA-256 验证的模块至检出目录之外。真实守护进程对照覆盖设备/变量列表及未知 UPS
+失败；PyNUT 没有直接 `GET VAR` 或 STARTTLS API，标为“不提供”而非“测试失败”。
+原有可选 `reference_smoke.py` 仅比较合成 `LIST UPS` 场景；两种对照均不代表完整解析器等价。
 
 ## 开发与验证
 
@@ -163,6 +166,8 @@ moon info --target native
 moon fmt --check
 # 可选：官方 PyNUT v2.8.3 模块须放在本仓库之外
 python3 scripts/reference_smoke.py /external/path/PyNUT.py
+# 隔离 Linux 上，使用固定模块与 upsc 对照同一真实守护进程
+python3 scripts/upsd_integration.py --pynut /external/path/PyNUT.py
 ```
 
 MoonBit 测试覆盖解析、命令注入防护、分片/合并响应、错误处理、标识匹配、空列表、

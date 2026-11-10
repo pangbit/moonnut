@@ -25,9 +25,10 @@ Only use it against servers you are authorized to query.
 
 **Verification boundary:** tests cover synthetic loopback NUT/TLS servers and
 actual NUT 2.8.4 `upsd` + `dummy-ups` programs with a virtual UPS in isolated
-Ubuntu CI. All three read operations agree with official `upsc`
-([verified run](https://github.com/pangbit/moonnut/actions/runs/42835044823)).
-A common `LIST UPS` fixture is also compared with PyNUT in a separate process.
+Ubuntu CI. The suite compares all three read operations with official `upsc`,
+and UPS/variable lists with pinned PyNUT in a separate process on the same daemon.
+See the [comparison scope and reproduction steps](docs/comparison.md) and
+[CI results](https://github.com/pangbit/moonnut/actions/workflows/ci.yml).
 No physical UPS or production deployment has been verified. The actual-daemon
 suite also exercises verified STARTTLS with supplied credentials, the server's
 incorrect-credential behavior, untrusted certificates and hostname mismatch,
@@ -179,9 +180,12 @@ not supported. UTF-8 descriptions are accepted as an extension to the documented
 ASCII protocol. Invalid UTF-8 and control characters are rejected.
 
 This is original MoonBit code, not a PyNUT translation. PyNUT is GPL-3.0-or-later;
-no PyNUT source is vendored or linked. The optional comparison runs its public API
-in a separate process against the same synthetic fixture. That comparison covers
-`LIST UPS` names/descriptions only, not all parser edge cases or real-daemon interoperability.
+no PyNUT source is vendored or linked. Its public API runs in a separate process;
+CI downloads a commit-pinned, SHA-256-verified module outside the checkout.
+The real-daemon comparison covers UPS/variable lists and unknown-UPS failure;
+PyNUT's lack of direct `GET VAR` and STARTTLS APIs is marked as not provided,
+not a failed test. The older optional `reference_smoke.py` only compares a synthetic
+`LIST UPS` fixture. Neither comparison establishes complete parser equivalence.
 
 ## Development and verification
 
@@ -198,6 +202,8 @@ moon info --target native
 moon fmt --check
 # Optional: external official PyNUT v2.8.3 module, kept outside the repository
 python3 scripts/reference_smoke.py /external/path/PyNUT.py
+# Same-daemon PyNUT/upsc comparison on isolated Linux, with the pinned module
+python3 scripts/upsd_integration.py --pynut /external/path/PyNUT.py
 ```
 
 MoonBit tests cover parsing, injection rejection, fragmented/coalesced replies,

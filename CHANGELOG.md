@@ -2,6 +2,11 @@
 
 ## Unreleased / 未发布
 
+- Compare pinned PyNUT and upsc with moonnut on one isolated dummy-ups daemon,
+  including full variable lists, direct single reads and failed queries.
+- 使用固定版本 PyNUT、upsc 与 moonnut 对照同一隔离 dummy-ups 守护进程，
+  覆盖完整变量列表、直接单值读取及查询失败；明确不提供的能力。
+
 - Clarify deferred NUT credential validation and verify explicit server rejection over TLS.
 - 澄清 NUT 延迟验证凭据的语义，验证 TLS 内服务端明确拒绝时客户端停止。
 

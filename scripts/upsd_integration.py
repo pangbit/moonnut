@@ -3,22 +3,28 @@
 
 Requires Linux NUT 2.8+ (nut-server and nut-client), OpenSSL, Python 3.9+, and a built
 examples/query executable. NSS-enabled NUT also needs libnss3-tools.
+Optionally pass --pynut /external/path/PyNUT.py for a pinned public-API comparison.
 Run as a regular user. This creates only temporary
 configuration/state, binds only loopback, and stops only its own child processes.
 No service-manager commands, global NUT configuration or real driver are used.
 """
+import argparse
 import getpass
+import hashlib
+import json
 import os
 from pathlib import Path
 import shutil
 import secrets
 import socket
 import subprocess
+import sys
 import tempfile
 import time
 
 ROOT = Path(__file__).resolve().parents[1]
 BINARY = ROOT / "_build/native/debug/build/examples/query/query.exe"
+PYNUT_SHA256 = "a12d1e40f8cd926314157c137372628322dd09db94d697aca4bc9dc8beb64f82"
 EXPECTED = {
     "ups.model": "Virtual UPS",
     "ups.status": "OL CHRG",
@@ -48,6 +54,43 @@ def locate(name, candidates=()):
 def run(args, env):
     return subprocess.run(args, env=env, capture_output=True, text=True, timeout=10)
 
+
+def validate_pynut(path):
+    path = Path(path).resolve()
+    if ROOT == path or ROOT in path.parents:
+        raise RuntimeError("Keep the GPL reference outside this repository")
+    if hashlib.sha256(path.read_bytes()).hexdigest() != PYNUT_SHA256:
+        raise RuntimeError("Expected the unmodified official PyNUT v2.8.3 reference")
+    return path
+
+
+def pynut_results(path, port, env):
+    # Only public methods, in a separate process; no copied reference internals.
+    code = """import importlib.util,json,sys
+spec=importlib.util.spec_from_file_location('PyNUT',sys.argv[1])
+module=importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+client=module.PyNUTClient(host='127.0.0.1',port=int(sys.argv[2]),timeout=5)
+def text(value):
+    return value.decode('utf-8') if isinstance(value,bytes) else value
+def mapping(values):
+    return {text(k):text(v) for k,v in values.items()}
+result={'ups':mapping(client.GetUPSList()),'variables':mapping(client.GetUPSVars('demo'))}
+try:
+    client.GetUPSVars('missing')
+except module.PyNUTError as error:
+    result['unknown_ups']=str(error)
+print(json.dumps(result))
+"""
+    result = run([sys.executable, "-c", code, str(path), str(port)], env)
+    if result.returncode:
+        raise RuntimeError("PyNUT comparison failed: " + result.stderr)
+    return json.loads(result.stdout)
+
+
+def upsc_mapping(result):
+    assert result.returncode == 0, result.stdout + result.stderr
+    return dict(line.split(": ", 1) for line in result.stdout.splitlines())
 
 
 def configure_tls(folder, upsd):
@@ -87,6 +130,10 @@ def configure_tls(folder, upsd):
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--pynut", type=validate_pynut,
+                        help="External official PyNUT v2.8.3 module (SHA-256 verified)")
+    args = parser.parse_args()
     if os.geteuid() == 0:
         raise RuntimeError("Run as a regular user, not root")
     if not BINARY.is_file():
@@ -96,6 +143,13 @@ def main():
     upsc = locate("upsc")
     env = {k: v for k, v in os.environ.items()
            if not k.startswith(("MOONNUT_", "NUT_"))}
+    for program in (upsd, driver, upsc):
+        version = run([program, "-V"], env)
+        assert version.returncode == 0, version.stderr
+        banner = (version.stdout + version.stderr).strip().splitlines()[0]
+        print(Path(program).name + ": " + banner, flush=True)
+    if args.pynut:
+        print("PyNUT: NUT v2.8.3 / module 1.8.0 / SHA-256 " + PYNUT_SHA256, flush=True)
     # The temporary listen reservation is released immediately before upsd starts.
     reservation = socket.socket()
     reservation.bind(("127.0.0.1", 0))
@@ -155,12 +209,43 @@ def main():
                         raise RuntimeError("moonnut query failed: " + result.stdout)
                     return result.stdout.strip()
 
-                assert query() == "demo\tSynthetic demo UPS"
-                variables = dict(line.split("\t", 1) for line in query("--vars", "demo").splitlines())
+                # Compare identical logical results, not CLI formatting or order.
+                # Values remain strings, including numbers and multi-word status.
+                endpoint = f"127.0.0.1:{port}"
+                devices = {item["name"]: item["description"]
+                           for item in json.loads(query("--json"))}
+                assert devices == upsc_mapping(run([upsc, "-L", endpoint], env)) == {"demo": "Synthetic demo UPS"}
+                variables = {item["name"]: item["value"]
+                             for item in json.loads(query("--vars", "demo", "--json"))}
+                reference = upsc_mapping(run([upsc, "demo@" + endpoint], env))
+                assert variables == reference, "complete LIST VAR results differ"
                 for name, expected in EXPECTED.items():
                     assert variables.get(name) == reference[name] == expected, (name, variables.get(name), reference[name], expected)
-                    assert query("--get", "demo", name) == expected, name
-                print("upsd integration: LIST UPS, LIST VAR and GET VAR agree with NUT upsc")
+                    scalar = run([upsc, "demo@" + endpoint, name], env)
+                    assert scalar.returncode == 0 and scalar.stdout.rstrip("\n") == expected, name
+                    assert json.loads(query("--get", "demo", name, "--json"))["value"] == expected, name
+                print(f"PASS: LIST UPS ({len(devices)} device), complete LIST VAR ({len(variables)} values) and 4 direct GET VAR reads match upsc")
+                # The public CLI intentionally redacts errors. Compare failure,
+                # not exception types/messages; inspect known reference errors.
+                for options, reference_args, message in (
+                    (("--vars", "missing"), ["missing@" + endpoint], "Unknown UPS"),
+                    (("--get", "demo", "missing.variable"), ["demo@" + endpoint, "missing.variable"], "Variable not supported"),
+                ):
+                    failed = run([str(BINARY), "127.0.0.1", str(port), "--plaintext", *options], env)
+                    baseline = run([upsc, *reference_args], env)
+                    assert failed.returncode != 0 and baseline.returncode != 0
+                    assert message.lower() in baseline.stderr.lower(), baseline.stderr
+                print("PASS: unknown UPS and unknown variable fail in moonnut and upsc (not error-text equivalence)")
+                if args.pynut:
+                    python_reference = pynut_results(args.pynut, port, env)
+                    assert python_reference["ups"] == devices
+                    assert python_reference["variables"] == variables
+                    assert python_reference["unknown_ups"] == "ERR UNKNOWN-UPS"
+                    print("PASS: PyNUT matches LIST UPS, complete LIST VAR and unknown-UPS failure on the same daemon")
+                    print("PyNUT GET VAR: not provided; selected values agree via GetUPSVars, not a direct GET")
+                    print("PyNUT STARTTLS: not provided; TLS checks below exercise moonnut only")
+                else:
+                    print("PyNUT comparison: not run (provide --pynut with the pinned external module)")
                 print("Synthetic device only: status=OL CHRG, charge=100%, runtime=600s")
                 auth_env = dict(env, MOONNUT_USERNAME="fixture", MOONNUT_PASSWORD=password)
                 trusted = [str(BINARY), "localhost", str(port), "--ca", str(cert)]
