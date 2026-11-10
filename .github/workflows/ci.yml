@@ -1,0 +1,27 @@
+name: ci
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  native:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install native dependencies
+        run: sudo apt-get update && sudo apt-get install -y build-essential libssl-dev zlib1g-dev
+      - name: Install verified MoonBit version
+        run: curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash -s -- '0.10.20+65efd5b93'
+      - name: Set toolchain path
+        run: echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
+      - name: Check and test
+        run: |
+          moon version
+          moon check --target native
+          moon test --target native
+          moon build --target native
+          python3 scripts/tls_smoke.py
+          moon info --target native
+          moon fmt --check
+          git diff --exit-code -- '*.mbti' '*.mbt' moon.mod moon.pkg

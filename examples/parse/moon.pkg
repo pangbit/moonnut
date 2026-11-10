@@ -1,0 +1,7 @@
+import {
+  "pangbit/moonnut",
+}
+
+pkgtype(kind: "executable")
+
+supported_targets = "native"

@@ -1,0 +1,8 @@
+/_build/
+/target/
+/.mooncakes/
+.DS_Store
+*.pem
+*.key
+.env
+.env.*
