@@ -18,7 +18,7 @@ import time
 ROOT = Path(__file__).resolve().parents[1]
 BINARY = ROOT / "_build/native/debug/build/examples/query/query.exe"
 EXPECTED = {
-    "device.model": "Virtual UPS",
+    "ups.model": "Virtual UPS",
     "ups.status": "OL CHRG",
     "battery.charge": "100",
     "battery.runtime": "600",
@@ -71,7 +71,7 @@ def main():
             f"  port = {folder / 'demo.dev'}\n  mode = dummy-once\n"
             '  desc = "Synthetic demo UPS"\n')
         (folder / "demo.dev").write_text(
-            "device.mfr: moonnut-fixture\n" +
+            "ups.mfr: moonnut-fixture\n" +
             "".join(f"{key}: {value}\n" for key, value in EXPECTED.items()))
         (folder / "upsd.conf").write_text(
             f"LISTEN 127.0.0.1 {port}\nSTATEPATH {folder}\nMAXAGE 15\n")
@@ -97,12 +97,13 @@ def main():
                     if result.returncode == 0:
                         values = dict(line.split(": ", 1) for line in result.stdout.splitlines()
                                       if ": " in line)
-                        if all(values.get(k) == v for k, v in EXPECTED.items()):
+                        if all(k in values for k in EXPECTED):
                             reference = values
                             break
                     time.sleep(0.1)
                 if reference is None:
-                    raise RuntimeError("NUT dummy device did not become ready")
+                    raise RuntimeError("NUT dummy device did not become ready: " +
+                                       result.stdout + result.stderr)
 
                 def query(*args):
                     result = run([str(BINARY), "127.0.0.1", str(port), "--plaintext", *args], env)
@@ -113,7 +114,7 @@ def main():
                 assert query() == "demo\tSynthetic demo UPS"
                 variables = dict(line.split("\t", 1) for line in query("--vars", "demo").splitlines())
                 for name, expected in EXPECTED.items():
-                    assert variables.get(name) == reference[name] == expected, name
+                    assert variables.get(name) == reference[name] == expected, (name, variables.get(name), reference[name], expected)
                     assert query("--get", "demo", name) == expected, name
                 print("upsd integration: LIST UPS, LIST VAR and GET VAR agree with NUT upsc")
                 print("Synthetic device only: status=OL CHRG, charge=100%, runtime=600s")
