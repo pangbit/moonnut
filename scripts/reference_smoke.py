@@ -2,7 +2,7 @@
 """Compare public behavior against an external PyNUT process, never vendoring it.
 
 Usage: python3 scripts/reference_smoke.py /external/path/PyNUT.py
-Recommended reference: Network UPS Tools v2.8.3 scripts/python/module/PyNUT.py.in
+Recommended reference: Network UPS Tools v2.8.4 scripts/python/module/PyNUT.py.in
 GPL-3.0-or-later reference code stays outside this Apache-2.0 repository.
 This checks a common fixture, not interoperability with a real upsd daemon.
 """

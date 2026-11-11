@@ -23,12 +23,12 @@ N01–N30 覆盖固定版本顶层命令及 GET/LIST/SET 分支；GET TRACKING �
 | N09 | LIST RANGE | E；90..100 与 102..105 | 全部独立区间、边界/顺序、无范围为空、真实整数格式；合成小数另标扩展 | P1 |
 | N10 | LIST CMD | E；两个设备命令表 | 空表、完整集合/顺序、未知 UPS、驱动不可用；任何命令名均不执行 | P1 |
 | N11 | GET CMDDESC | E；已列命令描述 | 未定义/未列命令的实际占位文本、upstream.、未知 UPS；不假设必然 CMD-NOT-SUPPORTED | P1 |
-| N12 | GET NUMLOGINS | E/U；本批次实现，已加入回环和官方对照脚本 | 零计数、未知/不可用 UPS；登录/断开后的计数生命周期后续补验 | P2/P3 |
-| N13 | LIST CLIENT | E/U；本批次实现，已加入回环和官方对照脚本 | 空列表、IPv4/IPv6 地址、多个 LOGIN 客户端、同地址重复、未知 UPS | P2/P3 |
-| N14 | VER | E/U；本批次实现，已加入回环和官方对照脚本 | 原始版本/构建文本，带多余参数错误；区别本机客户端版本 | P2 |
-| N15 | NETVER | E/U；本批次实现，已加入回环和官方对照脚本 | 协议版本响应、参数错误 | P2 |
-| N16 | PROTVER | E/U；本批次实现，已加入回环和官方对照脚本 | 与 NETVER 别名行为逐项比较；旧版本 fallback 只有另纳版本才验收 | P2 |
-| N17 | HELP | E/U；本批次实现，已加入回环和官方对照脚本 | 精确响应；不得将 HELP 未显示的命令认定不支持 | P2 |
+| N12 | GET NUMLOGINS | E/U；零计数与 libupsclient 一致；非零生命周期未验；[CI 42981570296][current-ci] | 零计数、未知/不可用 UPS；登录/断开后的计数生命周期后续补验 | P2/P3 |
+| N13 | LIST CLIENT | E/U；空列表与 upsc/PyNUT 一致；非空实际会话未验；[CI 42981570296][current-ci] | 空列表、IPv4/IPv6 地址、多个 LOGIN 客户端、同地址重复、未知 UPS | P2/P3 |
+| N14 | VER | E/U；VER 原文与 libupsclient/PyNUT 一致；[CI 42981570296][current-ci] | 原始版本/构建文本，带多余参数错误；区别本机客户端版本 | P2 |
+| N15 | NETVER | E/U；NETVER 与 libupsclient 一致；[CI 42981570296][current-ci] | 协议版本响应、参数错误 | P2 |
+| N16 | PROTVER | E/U；PROTVER 与 libupsclient 一致；[CI 42981570296][current-ci] | 与 NETVER 别名行为逐项比较；旧版本 fallback 只有另纳版本才验收 | P2 |
+| N17 | HELP | E/U；HELP 原文与 libupsclient/PyNUT 一致；[CI 42981570296][current-ci] | 精确响应；不得将 HELP 未显示的命令认定不支持 | P2 |
 | N18 | STARTTLS | E/U；默认 TRYSSL，显式验证/强制 TLS；脚本对照 upsc | 支持/拒绝/无 TLS 构建/重复升级、握手边界、信任与主机名；默认与可选 profile 分开 | P1/P3 |
 | N19 | USERNAME | E/D；TLS 或明文自动发送，显式会话待补 | 缺失/空/重复、与 PASSWORD 顺序、应答不代表权限有效、会话独立性 | P3 |
 | N20 | PASSWORD | E/D；仅成对自动发送 | 重复/错误值、延迟验证、明确拒绝；不能用匿名读取成功证明认证成功 | P3 |
@@ -156,7 +156,7 @@ X01–X08 为 **O**：用户明确不实现服务端或 UPS 驱动及其管理�
 
 ## Evidence and completion / 证据与关闭条件
 
-现有 E 的依据是 [固定 moonnut CI](https://github.com/pangbit/moonnut/actions/runs/42973210924)、[真实服务脚本](../scripts/upsd_integration.py)、[发现自测](../discovery_wbtest.mbt)、[CLI 自测](../scripts/cli_json_smoke.py) 与 [TLS 自测](../scripts/tls_smoke.py)。本批次运行 38 个原生测试、20 个 JSON 用例及 10 个本库 TLS 用例；新增官方差分由相同脚本在 CI 的隔离 NUT 环境执行。最终证据以该提交 CI 结果为准。
+现有 E 的依据是 [固定 moonnut CI](https://github.com/pangbit/moonnut/actions/runs/42973210924)、[真实服务脚本](../scripts/upsd_integration.py)、[发现自测](../discovery_wbtest.mbt)、[CLI 自测](../scripts/cli_json_smoke.py) 与 [TLS 自测](../scripts/tls_smoke.py)。本批次运行 38 个原生测试、20 个 JSON 用例及 10 个本库 TLS 用例；代码提交 `79c962ad323f33d7f0bf1027040ca8f34b830e4b` 的 [CI 42981570296][current-ci] 已全部通过，包括上述新增读取及默认传输与官方 upsc 的 4 个场景。默认 TLS 信任/回退已取得直接证据，TLS 全配置/后端及其他默认行为仍未全部关闭。
 
 每个验收 ID 至少关联 `reference profile → case/input/state → reference result → moonnut result → diff → evidence → verdict`。跨行共用一个真实场景可以，但各断言须可定位。`未实现`、`未测`、`环境阻塞`、`双方行为冲突待裁定` 都不能记作通过。已经选择的范围内，任何未解决差异都阻止“完全一致”的结论。
 
@@ -184,3 +184,5 @@ English: Client scope and official CLI defaults are confirmed. X01–X08 server/
 [scripts]: https://github.com/networkupstools/nut/blob/541c2ecf0b2ec33dadb9f40b16acbe39042bd103/scripts/Makefile.am
 [tools]: https://github.com/networkupstools/nut/blob/541c2ecf0b2ec33dadb9f40b16acbe39042bd103/tools/Makefile.am
 [hcl]: https://github.com/networkupstools/nut/blob/541c2ecf0b2ec33dadb9f40b16acbe39042bd103/data/driver.list.in
+
+[current-ci]: https://github.com/pangbit/moonnut/actions/runs/42981570296

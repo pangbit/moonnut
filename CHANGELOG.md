@@ -2,6 +2,23 @@
 
 ## Unreleased / 未发布
 
+- Confirm the complete NUT client target and pin NUT 2.8.4; add a staged plan and
+  acceptance matrix retaining all remaining client gaps. Servers and UPS drivers
+  are outside the approved implementation scope.
+- Follow official CLI transport defaults: try unverified TLS, permit plaintext
+  credentials after STARTTLS refusal, and fail on handshake errors. Keep explicit
+  verified/required TLS modes. Use separate 10-second connect and 5-second read
+  defaults, with an optional overall deadline; other timing differences remain open.
+- Add NUMLOGINS, CLIENT, VER, NETVER, PROTVER and HELP reads, raw banners, and
+  ASCII-insensitive echoed identifiers. Compare with official libupsclient,
+  upsc and PyNUT in isolated CI; existing discovery comparisons continue passing.
+- 确认完整客户端目标，固定 NUT 2.8.4，新增阶段计划及逐项验收矩阵；服务端和 UPS
+  驱动实现范围外，客户端剩余缺口继续保留，未宣称完整一致。
+- 默认按官方 CLI 尝试不验证证书的 TLS，STARTTLS 拒绝后允许明文凭据，握手失败终止；
+  保留显式强制/验证 TLS。默认连接 10 秒、每次读取 5 秒，总截止可选；其他计时差异仍待验。
+- 新增六项服务信息读取，保留原始文本，响应标识按 ASCII 忽略大小写；隔离 CI 与
+  官方 C 库、upsc、PyNUT 对照通过，既有发现能力对照继续通过。
+
 - Add read-only RW/ENUM/RANGE and command discovery, preserving every range as
   string endpoints and validating each command's exact row shape.
 - Add five CLI/JSON operations, bilingual examples and bounded malformed-response
