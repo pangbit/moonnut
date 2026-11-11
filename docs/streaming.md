@@ -66,9 +66,21 @@ Local macOS validation passes **53 native tests** (four new lifecycle tests),
 **28 scripted upsc cases**, the existing 20 JSON and 14 library/query-CLI TLS checks.
 **The official Linux streaming differential is pending execution.**
 The [script](../scripts/list_stream_integration.py) uses disposable loopback sockets,
-no daemon, device, credentials or LOGIN. It compares both implementations' stdout,
+no daemon, device, credentials or LOGIN. These 28 cases use plaintext after STARTTLS
+refusal; mid-list TLS failures are not directly compared by this suite. Existing
+TLS/real-upsd tests continue covering complete lists. It compares both implementations' stdout,
 semantic stderr and exit status for complete/empty/partial lists, extra/short
 fields, errors, EOF/truncated lines, case, end markers, Unicode and fragmented CRLF.
+
+The first official run [43000028237](https://github.com/pangbit/moonnut/actions/runs/43000028237)
+passed the first 20 comparisons, then exposed a **UTF-8 difference**: for
+`UPS a "测试 UPS"`, official stdout was `a:  UPS`, with six per-byte `addchar`
+diagnostics. [parseconf addchar](https://github.com/networkupstools/nut/blob/541c2ecf0b2ec33dadb9f40b16acbe39042bd103/common/parseconf.c#L178)
+deliberately rejects non-ASCII bytes; the diagnostic hex representation also depends
+on char signedness. moonnut retains the valid UTF-8 text. The revised suite keeps
+this as a separately asserted **known parity gap**, including every diagnostic;
+it is not a matching case and not removed by NSS normalization. Full parser-profile
+alignment remains required. The other 27 cases still require a completed rerun.
 
 The `list-stream.json` CI artifact retains reply bytes as hex, raw client requests,
 outputs and expected results. Only the six documented NSS diagnostics are excluded
@@ -94,7 +106,11 @@ BEGIN 前完整 ERR 可恢复；读失败、提前返回、回调失败或取消
 退出 1。资源上限仍显式失败，是保留差异。因此退出 0 不能证明列表完整，要求完整性时
 应使用库接口并处理异常。CLI 管道/TTY 缓冲与刷新时机未验收，不能从最终输出相同推断。
 
-本地 53 项原生、28 项脚本场景及既有 JSON/TLS 检查通过；**官方 Linux 流式差分待执行**。
+本地 53 项原生、28 项脚本场景及既有 JSON/TLS 检查通过。首次官方运行在第 21 个
+UTF-8 场景发现差异而失败：参考 parseconf 丢弃高位字节并发出逐字节诊断，moonnut 保留
+合法 UTF-8。它仍是 B01/D 待解决项，不过滤、不算一致；修订脚本分别断言双方结果，
+其余 27 场景待完整重跑。
 新增四项原生测试检查先取得行再发 END、作用域、异常、取消、提前退出、上限及可恢复 ERR。
-脚本只使用回环合成回复，保存原始证据；未完成连接的清理/LOGOUT、完整分词、缓冲边界及
+脚本只使用 STARTTLS 被拒绝后的明文回环合成回复，保存原始证据；中途 TLS 失败未直接
+对照。未完成连接的清理/LOGOUT、完整分词、缓冲边界及
 C ABI 等仍保留差异。当前 README 入口形式不变，不操作真实 UPS、不关机、不发布。

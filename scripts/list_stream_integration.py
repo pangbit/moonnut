@@ -119,13 +119,22 @@ def main():
     if args.reference:
         version = subprocess.run([str(args.reference), '-V'], capture_output=True, text=True, check=True)
         assert '2.8.4' in version.stdout + version.stderr
-    evidence = {'reference': 'NUT 2.8.4 upsc / libupsclient', 'cases': []}
+    evidence = {'reference': 'NUT 2.8.4 upsc / libupsclient', 'cases': [], 'known_differences': []}
     try:
         for case in CASES:
             label, kind, reply, code, stdout, stderr = case
             row = {'case': label, 'query': kind, 'reply_hex': reply.hex(),
                    'expected': {'exit': code, 'stdout': stdout, 'stderr': stderr}}
             evidence['cases'].append(row)
+            if label == 'unicode-description':
+                # Fixed Linux build: parseconf addchar rejects high-bit bytes;
+                # signed char promotion determines the diagnostic hex spelling.
+                row['expected_official'] = {
+                    'exit': 0, 'stdout': 'a:  UPS\n',
+                    'stderr': ''.join(f'addchar: discarding invalid character (0x{byte | 0xffffff00:02x})!\n'
+                                      for byte in '测试'.encode('utf-8')),
+                }
+                evidence['known_differences'].append(label)
             programs = [('moonnut', BINARY)]
             if args.reference:
                 programs.insert(0, ('official', args.reference))
@@ -133,8 +142,13 @@ def main():
                 actual = row[name] = observe(program, case)
                 comparable = {key: actual[key] for key in ('exit', 'stdout', 'stderr')}
                 comparable['stderr'] = semantic_stderr(comparable['stderr'])
-                assert comparable == row['expected'], row
-        print(f"PASS: {len(CASES)} streaming upsc cases " + ('match official stdout, semantic stderr and exit status' if args.reference else 'pass local expectations; official comparison NOT RUN'))
+                expected = row.get('expected_official', row['expected']) if name == 'official' else row['expected']
+                assert comparable == expected, row
+        if args.reference:
+            print(f"PASS: {len(CASES) - len(evidence['known_differences'])} streaming upsc cases match official stdout, semantic stderr and exit status")
+            print("KNOWN DIFFERENCE: UTF-8 text is preserved by moonnut; official parseconf drops high-bit bytes with per-byte diagnostics (not normalized away)")
+        else:
+            print(f"PASS: {len(CASES)} local streaming expectations; official comparison NOT RUN")
     finally:
         if args.evidence_dir:
             args.evidence_dir.mkdir(parents=True, exist_ok=True)

@@ -132,9 +132,10 @@ full error/platform behavior and other client API work remain in scope.
 ## Streaming increment / 流式增量
 
 推进 B03/L05/C01–C03：作用域 LIST 迭代器及 upsc 部分结果行为。保留严格类型化整表
-接口和资源上限差异。53 项原生、28 个脚本场景本地通过，固定官方 Linux 差分待执行。
+接口和资源上限差异。53 项原生、28 个脚本场景本地通过，首次官方对照发现 UTF-8 分词差异；27 项一致性对照待完整重跑。
 [流式文档](streaming.md)区分库异常与官方 CLI 的部分列表退出 0 语义，以及实际证据。
 
 English: Scoped streaming and upsc partial-result behavior are implemented; the
-28-case official differential is pending. Full parser, buffering, lifecycle and
+28-case suite found a UTF-8 parser difference; 27 matching cases await a complete
+rerun. Full parser, buffering, lifecycle and
 platform equivalence remain open. No controls, host shutdown or publishing added.
