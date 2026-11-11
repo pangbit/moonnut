@@ -25,7 +25,8 @@ English: The approved target is full NUT **client** functionality and observable
 | PyNUT | 固定 NUT 提交中的模块 1.8.0；SHA-256 `a12d1e40f8cd926314157c137372628322dd09db94d697aca4bc9dc8beb64f82`；与原 v2.8.3 参考文件逐字节相同 |
 | moonnut audit start | `709b5deb77afb33fbee940d2f5fa8e9a2bb1427c`；当时为 11 种业务读取，默认验证 TLS |
 | Toolchain | `moonc 0.10.20+65efd5b93`、async `0.22.4`、native |
-| Current management CLI evidence | [CI 42993115828](https://github.com/pangbit/moonnut/actions/runs/42993115828)；代码 `fbc9b9bf77987128aae3f2d280a90fb955d224c6`：49 项原生、25 个管理 CLI 场景、18 条驱动请求、7 个 ID；六行 NSS 日志排除规则及剩余差异明确保留 |
+| Current query CLI evidence | [CI 42996781132](https://github.com/pangbit/moonnut/actions/runs/42996781132)；代码 `7aba3416dc8aa0f480fa9e805f6b1364e95d4442`：40 个 upsc 差分场景、49 项原生、20 项 JSON、14 项本库/原生查询 CLI TLS；官方默认传输及既有读取/会话/控制/管理 CLI 回归全部通过；帮助身份和 NSS 日志仍有差异 |
+| Previous management CLI evidence | [CI 42993115828](https://github.com/pangbit/moonnut/actions/runs/42993115828)；代码 `fbc9b9bf77987128aae3f2d280a90fb955d224c6`：49 项原生、25 个管理 CLI 场景、18 条驱动请求、7 个 ID；六行 NSS 日志排除规则及剩余差异明确保留 |
 | Previous control evidence | [CI 42988803694](https://github.com/pangbit/moonnut/actions/runs/42988803694)；代码 `0e5413fe7f4ac2090c27fb491525e08279223105`：48 项原生、52 项控制结果、15 条驱动请求、8 个 tracking ID、三次官方 CLI；既有读取/会话/TLS/JSON 回归通过 |
 | Previous session evidence | [CI 42984926159](https://github.com/pangbit/moonnut/actions/runs/42984926159)；代码 `c2527e0457a2905c610661fde1b5e341c9c95b3a`：45 个原生测试、既有 TLS/JSON/真实 upsd 对照及会话 44 项结果 × 3 种传输配置全部通过 |
 | Previous read evidence | [CI 42981570296](https://github.com/pangbit/moonnut/actions/runs/42981570296)；代码 `79c962ad323f33d7f0bf1027040ca8f34b830e4b`：38 个原生测试、20 个 JSON、10 个本库 TLS、4 个官方 upsc 传输对照场景及真实 upsd 读取对照全部通过 |
@@ -120,10 +121,10 @@ remain in scope; no real UPS or host shutdown operation is performed.
 ## Query CLI increment / 查询 CLI 增量
 
 新增 cmd/upsc，按 C01–C04 推进常用只读查询。复用双虚拟设备夹具，新增 40 场景官方
-差分与原始输出 artifact，首次固定 Linux 执行待完成；本地 49 项原生、20 项 JSON、
+差分与原始输出 artifact，固定 Linux CI 42996781132 已通过；本地 49 项原生、20 项 JSON、
 10 项原有 TLS 和 4 项新增查询 CLI 传输检查通过。参见[查询 CLI 文档](query-cli.md)。
 
 English: Common upsc workflows are implemented with ordered output and explicit
-remaining gaps. The 40-case official differential is pending Linux execution;
+remaining gaps. The 40-case official differential passed CI 42996781132;
 help/version identity and NSS diagnostics remain differences. Monitoring, streaming,
 full error/platform behavior and other client API work remain in scope.

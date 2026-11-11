@@ -70,10 +70,10 @@ B08 不能只断言“均失败”。使用固定 [server/neterr.h][errors] 中�
 
 | ID | 程序与操作 | 当前状态 | 验收内容 | 来源/阶段 |
 | --- | --- | --- | --- | --- |
-| C01 | upsc -l / -L [host] | E/U/D；原生 CLI 已实现，双设备精确输出差分待执行 | 名称/名称+描述、默认地址、端口、精确格式 | [upsc][upsc]；P2 |
-| C02 | upsc ups [variable] | E/U/D；原生 CLI 已实现，含 server.* 与常见错误；直接差分待执行 | 全变量/单值、server.*、地址解析、错误/输出 | [upsc][upsc]；P1/P2 |
-| C03 | upsc -c ups | E/U/D；原生 -c 已实现；零/一/二个消费者及重复地址差分待执行 | 登录客户端列表和输出 | [upsc][upsc]；P2/P3 |
-| C04 | upsc -h / -V / -W | E/U/D；选项已实现；帮助身份/完整诊断仍不同，超时/地址直接差分待执行 | 帮助、版本、连接超时、合法/非法参数及环境覆盖 | [upsc][upsc]；P2 |
+| C01 | upsc -l / -L [host] | E/U/D；原生 CLI 双设备精确输出已对照；默认地址等未完 | 名称/名称+描述、默认地址、端口、精确格式 | [upsc][upsc]；P2 |
+| C02 | upsc ups [variable] | E/U/D；原生 CLI 全表/单值/server.* 与常见错误精确输出已对照；流式/完整错误未完 | 全变量/单值、server.*、地址解析、错误/输出 | [upsc][upsc]；P1/P2 |
+| C03 | upsc -c ups | E/U/D；原生 -c 零/一/二个消费者、重复地址及注销后空列表已对照；完整边界未完 | 登录客户端列表和输出 | [upsc][upsc]；P2/P3 |
+| C04 | upsc -h / -V / -W | E/U/D；零/小数/非法超时及环境、常用地址/错误已对照；帮助身份/完整诊断/精度等未完 | 帮助、版本、连接超时、合法/非法参数及环境覆盖 | [upsc][upsc]；P2 |
 | C05 | upsrw 默认 / -l | E/U/D；原生 upsrw 默认/-l 有序列表文本已通过[管理 CLI 对照][admin-ci] | 完整变量、描述、类型、长度、选项、SELECTED 标记、当前值；不能只比较集合 | [upsrw][upsrw]；P1/P2 |
 | C06 | upsrw -s VAR=VALUE | E/U/D；原生 upsrw -s 的值/权限/范围对照通过；长输入等未完 | 非交互写入、值转义/边界、错误、完成语义 | [upsrw][upsrw]；P4 |
 | C07 | upsrw -s VAR；-u/-p | E/U/D；POSIX 用户名/密码/值提示已实现；upsrw 值提示在 Linux 管道对照通过，用户名/密码本批仅直接测 upscmd；TTY/EOF 未完 | 交互输入值与缺失凭据提示、EOF/非 TTY；只用一次性假凭据 | [upsrw][upsrw]；P4 |
@@ -167,7 +167,7 @@ X01–X08 为 **O**：用户明确不实现服务端或 UPS 驱动及其管理�
 当前 P4 子集：48 项原生测试通过，三项新增见 [controls_wbtest.mbt](../controls_wbtest.mbt)。
 [控制文档](controls.md)及[隔离控制对照](../scripts/control_integration.py)规定 52 项结果、15 条驱动请求、8 个真实 tracking ID 和三次官方 CLI 执行；本批 [CI 42988803694][control-ci] 已通过（代码 `0e5413fe7f4ac2090c27fb491525e08279223105`），只关闭对应场景的未执行状态。对照仅用新建回环 upsd 和内存驱动，无真实 UPS、upsmon 或关机程序。
 
-查询 CLI 增量见 [query-cli.md](query-cli.md)：C01–C04 已有原生实现，40 场景直接差分待 Linux 执行；本地四项新增传输检查通过。流式部分结果、完整错误与平台边界等仍保留 U/D。
+查询 CLI 增量见 [query-cli.md](query-cli.md)：C01–C04 已有原生实现，40 场景直接差分已通过 [CI 42996781132](https://github.com/pangbit/moonnut/actions/runs/42996781132)（代码 `7aba3416dc8aa0f480fa9e805f6b1364e95d4442`）；49 项原生、20 项 JSON、14 项本库/查询 CLI 传输及全部既有回归通过。流式部分结果、完整错误与平台边界等仍保留 U/D。
 
 每个验收 ID 至少关联 `reference profile → case/input/state → reference result → moonnut result → diff → evidence → verdict`。跨行共用一个真实场景可以，但各断言须可定位。`未实现`、`未测`、`环境阻塞`、`双方行为冲突待裁定` 都不能记作通过。已经选择的范围内，任何未解决差异都阻止“完全一致”的结论。
 

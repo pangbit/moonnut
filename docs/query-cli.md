@@ -45,8 +45,9 @@ cover an untrusted/wrong-host certificate, two STARTTLS refusal replies and a fa
 TLS handshake, using disposable loopback sockets. Native check/build/info/format pass.
 
 The new [official CLI comparison](../scripts/upsc_cli_integration.py) is wired into
-[isolated upsd integration](../scripts/upsd_integration.py). **Its 40 differential
-cases are pending the first pinned Linux CI execution.** The reference uses Ubuntu
+[isolated upsd integration](../scripts/upsd_integration.py). **All 40 differential
+cases passed [CI 42996781132](https://github.com/pangbit/moonnut/actions/runs/42996781132),
+code `7aba3416dc8aa0f480fa9e805f6b1364e95d4442`.** The reference uses Ubuntu
 26.04 NUT packages `2.8.4+really-2`, with NSS; it does not represent all NUT platforms.
 
 | Matrix IDs | Cases and observations |
@@ -57,8 +58,12 @@ cases are pending the first pinned Linux CI execution.** The reference uses Ubun
 | C04 / B12 / L08 / L11 | Zero/fractional/invalid timeout options and environment values; bracketed host, numeric port prefix and common malformed addresses |
 | B11 | Exit status, exact stdout and semantic stderr for each case; separate raw help/version records retain their known identity difference |
 
+The same CI also passed all earlier read/PyNUT comparisons, 44 session outcomes in
+each of three transport profiles, 52 control outcomes and 25 management CLI cases.
+All control regressions use isolated in-memory devices. No real-device result is inferred.
+
 The artifact `upsc-cli.json` in `isolated-control-evidence` retains both raw outputs,
-arguments and expected results even when comparison fails. The name is inherited
+arguments and expected results even when comparison fails (CI retention: seven days). The name is inherited
 from the earlier control suite; these 40 cases send no device controls. Two temporary
 LOGIN-only consumers belong to the isolated test setup, using disposable credentials.
 The read-only discovery fixture still rejects any driver control request.
@@ -97,7 +102,8 @@ full-client target. No real UPS, host shutdown or Mooncakes publication is invol
 或保留的 `examples/query --tls/--ca`。JSON 仍由演示入口提供。
 
 本地 49 项原生、20 项 JSON、10 项原有 TLS 及 4 项新增 upsc 传输检查已通过。
-新增 40 场景官方差分已接入固定 Linux CI，**首次执行尚待完成**，不能标记为通过。
+新增 40 场景官方差分已通过[固定 Linux CI 42996781132](https://github.com/pangbit/moonnut/actions/runs/42996781132)，
+对应代码 `7aba3416dc8aa0f480fa9e805f6b1364e95d4442`；只证明列明场景。
 复用两个虚拟设备及只授予 LOGIN 的临时账号，比较双端原始输出、顺序、错误及退出码；
 两个临时消费者仅属于测试准备，不代表查询 CLI 会登录。没有真实设备控制或宿主关机。
 

@@ -14,7 +14,7 @@ pub(all) struct Variable {
 }
 
 ///|
-/// No management or shutdown command is exposed.
+/// Discover devices without registering a consumer or issuing control requests.
 pub async fn Session::list_ups(self : Session) -> Array[Ups] {
   let rows = self.query("LIST UPS", ["UPS"], true)
   rows.map(row => { name: row[1], description: row[2], })
@@ -86,7 +86,7 @@ pub async fn Session::get_var_description(
 /// Return all GET TYPE tokens in server order, without coercing variable values.
 /// Examples: ["RW", "STRING:32"], ["ENUM", "NUMBER"]. Unknown tokens are retained.
 /// An empty array is valid: NUT defines an omitted type as numeric.
-/// RW describes server metadata; it never grants this client write capability.
+/// RW describes server metadata; it does not grant permission to modify a value.
 pub async fn Session::get_var_type(
   self : Session,
   ups : String,
@@ -166,7 +166,8 @@ pub async fn Session::list_range(
 }
 
 ///|
-/// Discover command names only. This client cannot execute instant commands.
+/// Discover command names without executing them. See Session::execute_command
+/// for a separate, explicit control request.
 pub async fn Session::list_commands(
   self : Session,
   ups : String,
