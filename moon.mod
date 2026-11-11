@@ -12,7 +12,7 @@ keywords = [ "nut", "ups", "upsd", "monitoring" ]
 
 preferred_target = "native"
 
-description = "A bounded, read-only NUT upsd client for MoonBit native applications"
+description = "A bounded NUT upsd client with explicit sessions and control requests for MoonBit native applications"
 
 import {
   "moonbitlang/async@0.22.4",

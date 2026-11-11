@@ -121,7 +121,7 @@ ENUM/双区间 RANGE 另用连接到真实 upsd 的合成 Unix socket 驱动状�
 
 CLI 主动脱敏错误，因此比较“失败”结果而非异常类型或报错文本等价。TLS 检查不是
 三方安全性比较；回环脚本另将默认不验证证书、STARTTLS 拒绝回退和握手失败与 upsc 直接对照。NUT 即使收到错误密码也可能允许匿名读取，读成功不能证明凭据有效。
-不测试或评分超出 moonnut 只读范围的 PyNUT 功能；畸形响应和生命周期边界保留在
+本节只读对照不测试或评分 PyNUT 的其他功能；畸形响应和生命周期边界保留在
 独立合成测试中。未验证物理驱动、真实掉电、电池行为、所有 TLS 后端或生产网络。
 
 在已安装上述依赖的隔离 Linux 环境中，以普通用户运行上文复现命令。脚本不使用
@@ -135,3 +135,10 @@ CI 记录版本、源码校验值、各项结果和 TLS 后端；固定包缺失
 
 Session validation is described in [sessions.md](sessions.md). Only the temporary LOGIN-only account is used; no SET VAR/INSTCMD/FSD is granted or sent. Different transport profiles and eventual cleanup are recorded separately.
 会话对照仅用临时 LOGIN 权限账号，不授权或发送设备控制；不同传输配置和最终清理语义分别记录，详见会话文档。
+
+The separate [control comparison](controls.md) uses new disposable upsd processes
+and a distinct in-memory driver, with temporary control permissions. Its results
+and execution status do not change the read-only boundaries of the tests above.
+
+独立[控制对照](controls.md#中文)另建临时 upsd、内存驱动与控制账号；结果及运行状态单独
+记录，不改变本文只读测试的边界。完整客户端目标仍以计划和矩阵为准。

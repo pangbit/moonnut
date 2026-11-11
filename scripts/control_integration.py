@@ -21,7 +21,7 @@ import time
 from upsd_integration import ROOT, configure_tls, locate, run
 
 BINARY = ROOT / "_build/native/debug/build/examples/control_probe/control_probe.exe"
-UUID = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}")
+UUID = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}", re.IGNORECASE)
 ESCAPED = 'a"b\\c#d'
 
 
