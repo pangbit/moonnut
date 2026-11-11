@@ -51,3 +51,14 @@ upsmon, shutdown executable or service manager participates. See [controls](docs
 Success 不是实物效果的独立证据；丢失确认时结果不确定，不能据此认为可以安全重发。
 控制测试仅使用新建回环守护进程、假凭据和纯内存驱动；不启动真实驱动、upsmon、
 关机程序或服务管理器。默认明文回退风险不变，发布仍由用户控制。
+
+Management CLIs retain NUT's plaintext-fallback defaults. A password supplied
+with -p is visible in process arguments; POSIX password prompting avoids that
+argv exposure. A tracking timeout may happen after dispatch, including -t 0;
+never infer that the operation did not execute. Raw single-line requests and CLI
+replies are for explicit protocol use; they can issue authorized control actions.
+See [management CLI limits](docs/admin-cli.md).
+
+管理 CLI 保留官方明文回退默认。-p 密码可被进程参数观察，POSIX 密码提示可避免该 argv
+暴露。tracking 超时可能发生在请求已发送之后，包括 -t 0，不能推断没有执行。
+单行协议接口可发送显式控制请求。测试只连接隔离内存设备，发布限制不变。

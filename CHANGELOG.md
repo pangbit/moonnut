@@ -2,6 +2,14 @@
 
 ## Unreleased / 未发布
 
+- Add native upsrw/upscmd management CLIs with listing, POSIX prompts, raw command
+  parameters and official-style tracking waits/output/exit status. Add bounded
+  single-line Session exchanges and blocking connect timeout selection.
+- Add a 25-case isolated official CLI differential; Linux execution evidence is
+  pending. Preserve known output, buffer, error and platform gaps explicitly.
+- 新增原生管理 CLI、POSIX 提示、原始命令参数及官方等待/输出/退出语义；增加受限单行
+  请求与阻塞连接选项。25 场景隔离官方差分待 Linux 执行，已知边界仍保留；不发布。
+
 - Add explicit Session SET VAR, INSTCMD, PRIMARY/MASTER and FSD requests, with
   distinct accepted/tracked receipts and no implicit completion wait or replay.
 - Add three focused native tests and a separate isolated in-memory control

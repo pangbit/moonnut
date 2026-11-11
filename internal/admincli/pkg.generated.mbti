@@ -1,0 +1,13 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "pangbit/moonnut/internal/admincli"
+
+// Values
+pub async fn run(writable~ : Bool) -> Unit
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits

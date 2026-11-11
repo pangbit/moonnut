@@ -3,6 +3,7 @@ async fn session_fixture(
   script : Array[(String, String)],
   run : async (Session) -> Unit,
   max_response_bytes~ : Int32 = 4194304,
+  connect_timeout_ms~ : Int32 = 10000,
 ) -> Unit {
   let server = @socket.TcpServer(@socket.Addr::parse("127.0.0.1:0"))
   defer server.close()
@@ -12,6 +13,7 @@ async fn session_fixture(
     security=Plaintext,
     max_line_bytes=64,
     max_response_bytes~,
+    connect_timeout_ms~,
   )
   @async.with_timeout(3000, () => {
     @async.with_task_group(group => {
@@ -241,4 +243,41 @@ async test "cancelling a queued request preserves the active session" {
       assert_eq(session.get_num_logins("demo"), 0)
     })
   })
+}
+
+///|
+async test "single reply exchange preserves raw results and rejects multiline framing" {
+  session_fixture(
+    [
+      ("INSTCMD demo fixture.success two words", "ERR ACCESS-DENIED"),
+      ("GET TRACKING id", "ERR FAILED"),
+      ("LOGOUT", "OK Goodbye"),
+    ],
+    connect_timeout_ms=0,
+    session => {
+      for
+        command in [
+          "LIST UPS", "STARTTLS", "FSD demo\nFSD other", "USERNAME bad\r",
+        ] {
+        let rejected = try {
+          ignore(session.request_line(command))
+          false
+        } catch {
+          InvalidArgument(_) | Protocol(_) => true
+          error => raise error
+        }
+        assert_true(rejected)
+      }
+      assert_eq(
+        session.request_line("INSTCMD demo fixture.success two words"),
+        "ERR ACCESS-DENIED",
+      )
+      assert_eq(
+        session.request_line("GET TRACKING id", read_timeout_ms=1000),
+        "ERR FAILED",
+      )
+      assert_eq(session.request_line("LOGOUT"), "OK Goodbye")
+      assert_true(session.is_closed())
+    },
+  )
 }

@@ -29,6 +29,7 @@ pub struct Client {
 ///|
 /// Optional timeout_ms caps the whole operation. By default, connection has a
 /// 10-second timeout and each transport read has a 5-second timeout (NUT CLI values).
+/// A zero connect timeout selects a blocking connection, as NUT -W 0 does.
 /// NUT may accept USERNAME/PASSWORD without validating them until a privileged
 /// command. A successful read does not prove that credentials are correct.
 pub fn Client::new(
@@ -50,7 +51,7 @@ pub fn Client::new(
   if timeout_ms is Some(value) && value <= 0 {
     raise InvalidArgument("invalid operation timeout")
   }
-  if connect_timeout_ms <= 0 ||
+  if connect_timeout_ms < 0 ||
     read_timeout_ms <= 0 ||
     max_line_bytes < 16 ||
     max_line_bytes > 1048576 ||
@@ -93,9 +94,14 @@ pub fn Client::new(
 /// Receiving OK does not establish their validity or grant LOGIN permission.
 pub async fn Client::connect(self : Client) -> Session {
   with_optional_timeout(self.timeout_ms, () => {
-    let tcp = @async.with_timeout(self.connect_timeout_ms, () => {
-      @socket.Tcp::connect_to_host(self.host, port=self.port)
-    })
+    let tcp = with_optional_timeout(
+      if self.connect_timeout_ms == 0 {
+        None
+      } else {
+        Some(self.connect_timeout_ms)
+      },
+      () => @socket.Tcp::connect_to_host(self.host, port=self.port),
+    )
     let session : Session = {
       tcp,
       mutex: @async.Mutex(),

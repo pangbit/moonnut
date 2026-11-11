@@ -33,16 +33,24 @@ async fn Session::write(self : Session, line : String) -> Unit {
 ///|
 /// One-byte STARTTLS reads prevent reading encrypted data into a cleartext
 /// buffer. Normal replies use a bounded buffer and retain fragmented lines.
-async fn Session::raw_line(self : Session, handshake~ : Bool = false) -> String {
+async fn Session::raw_line(
+  self : Session,
+  handshake~ : Bool = false,
+  read_timeout_ms? : Int32,
+) -> String {
   let buffer = @buffer.Buffer()
   while true {
     if self.offset == self.pending.length() {
-      let chunk = @async.with_timeout(self.read_timeout_ms, () => {
-        match self.transport {
-          Clear(tcp) => tcp.read_some(max_len=if handshake { 1 } else { 4096 })
-          Secure(tls) => tls.read_some(max_len=4096)
-        }
-      })
+      let chunk = @async.with_timeout(
+        read_timeout_ms.unwrap_or(self.read_timeout_ms),
+        () => {
+          match self.transport {
+            Clear(tcp) =>
+              tcp.read_some(max_len=if handshake { 1 } else { 4096 })
+            Secure(tls) => tls.read_some(max_len=4096)
+          }
+        },
+      )
       match chunk {
         None => raise UnexpectedEof
         Some(bytes) => {
@@ -111,6 +119,7 @@ async fn Session::query(
   raw~ : Bool = false,
   check_errors~ : Bool = true,
   close_after~ : Bool = false,
+  read_timeout_ms? : Int32,
 ) -> Array[Array[String]] {
   with_optional_timeout(self.timeout_ms, () => {
     self.mutex.acquire()
@@ -125,7 +134,7 @@ async fn Session::query(
     let result = try {
       self.write(command)
       if raw {
-        let reply = self.raw_line()
+        let reply = self.raw_line(read_timeout_ms?)
         if reply.is_empty() {
           raise Protocol("empty response")
         }
@@ -287,3 +296,37 @@ pub extend TrackingStatus with Eq::{equal, not_equal}
 
 ///|
 pub extend TrackingStatus with @debug.Debug::{to_repr}
+
+///|
+/// Exchange one complete command line and one raw reply (including ERR).
+/// Intended for single-line protocol/CLI mappings; LIST and STARTTLS are rejected.
+/// Arguments are already formatted by the caller. Never reconnects or retries.
+pub async fn Session::request_line(
+  self : Session,
+  command : String,
+  read_timeout_ms? : Int32,
+) -> String {
+  if read_timeout_ms is Some(ms) && ms <= 0 {
+    raise NutError::InvalidArgument("invalid read timeout")
+  }
+  let tokens = parse_line(command)
+  if tokens.is_empty() ||
+    tokens[0].equal_ignore_ascii_case("LIST") ||
+    tokens[0].equal_ignore_ascii_case("STARTTLS") {
+    raise NutError::InvalidArgument("expected a single-reply command")
+  }
+  let reply = self.query(
+      command,
+      [],
+      false,
+      raw=true,
+      check_errors=false,
+      close_after=tokens[0].equal_ignore_ascii_case("LOGOUT"),
+      read_timeout_ms?,
+    )[0][0]
+  if reply.has_prefix("BEGIN LIST ") {
+    self.close()
+    raise Protocol("unexpected list response")
+  }
+  reply
+}

@@ -20,6 +20,7 @@ GitHub main 包含未发布的演示改进。Mooncakes 由维护者手动发布�
 - `Client` 读取各自独立连接；显式 `Session` 可在同一连接执行所有读取。
 - 会话支持独立提交凭据、tracking、LOGIN/LOGOUT 及请求串行化，不自动重连或重试。
 - 显式 Session 支持 SET VAR、INSTCMD、PRIMARY/MASTER、FSD；区分接受与完成。
+- 原生 [upsrw/upscmd 管理 CLI](docs/admin-cli.md#中文)，提供列表、提示、操作和等待；未完成的一致性边界仍明确列出。
 - 分别设置连接和读取超时，整体截止时间可选；保留行长、响应字节和行数限制。
 - 支持 NUT 引号和转义规则，校验响应标识及列表边界。
 

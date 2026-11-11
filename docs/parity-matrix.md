@@ -2,7 +2,7 @@
 
 **Client scope confirmed / 客户端范围已确认。** 固定基线、用户决定与阶段见 [parity-plan.md](parity-plan.md)。客户端实现和隔离对照继续进行；服务器/UPS 驱动实现范围外。
 
-NUT 固定源码：`541c2ecf0b2ec33dadb9f40b16acbe39042bd103` (2.8.4)。moonnut 审计起点：`709b5deb77afb33fbee940d2f5fa8e9a2bb1427c`；前批次完成选定读取、默认传输与显式会话；本批次增加五项控制请求及有效 tracking ID 对照。
+NUT 固定源码：`541c2ecf0b2ec33dadb9f40b16acbe39042bd103` (2.8.4)。moonnut 审计起点：`709b5deb77afb33fbee940d2f5fa8e9a2bb1427c`；前批次完成选定读取、默认传输、会话与控制对照；本批次增加管理 CLI。
 
 状态：**E** = 已实现且有选定场景证据，仍待完整验收；**M** = 缺失；**D** = 已知设计/接口差异；**U** = 未直接对照；**S** = 客户端相关部分待展开；**O** = 用户已确认范围外。`E` 不等于整行已通过。来源为文件级固定源码，最终用例须进一步记录行号/分支及运行证据。
 
@@ -57,8 +57,8 @@ N01–N30 覆盖固定版本顶层命令及 GET/LIST/SET 分支；GET TRACKING �
 | B08 | 错误与状态机 | E/U/D | 每个实际可达协议错误、传输/解析错误映射、错误优先级、tracking 结果；保留额外错误信息是否属于目标 | P1/P3/P4；[错误定义][errors] |
 | B09 | 数据与集合语义 | D/U | 字符串/bytes/vector、数组/map/set、顺序、重复、空值、未知类型、多个值；禁止未审核排序/转换 | P1/P2；[C++ API][cpp]、[PyNUT][pynut] |
 | B10 | 描述与服务特殊值 | E/U | 无描述的不同占位、server.*、upstream.*、驱动断开/陈旧；文档示例不是运行结果 | P1；[GET][get]、[LIST][list] |
-| B11 | CLI 输出与结束状态 | D | stdout/stderr、精确文本/空格/换行、错误/帮助退出码、版本身份、输入缺失、管道行为 | P1/P2；C01–C14 |
-| B12 | 环境/配置优先级 | M/D | NUT_DEFAULT_CONNECT_TIMEOUT、NUT_DEBUG_LEVEL、默认配置/证书与 CLI 参数的真实优先级；MOONNUT_* 当前非等价接口 | P2；[C 实现][cimpl] |
+| B11 | CLI 输出与结束状态 | E/U/D；管理 CLI 已实现；NSS 日志/帮助等差异仍保留 | stdout/stderr、精确文本/空格/换行、错误/帮助退出码、版本身份、输入缺失、管道行为 | P1/P2；C01–C14 |
+| B12 | 环境/配置优先级 | E/M/U/D；管理 CLI 已读取 NUT_DEFAULT_CONNECT_TIMEOUT/-W；其他配置仍缺 | NUT_DEFAULT_CONNECT_TIMEOUT、NUT_DEBUG_LEVEL、默认配置/证书与 CLI 参数的真实优先级；MOONNUT_* 当前非等价接口 | P2；[C 实现][cimpl] |
 | B13 | 验证覆盖口径 | U | 每个 profile 保存同输入参考结果和本库结果；自测、直接差分、虚拟设备、硬件证据分开 | P0–P6 |
 | B14 | 授权、重复与不确定结果 | E/U；发送后丢确认关闭且不重发原生通过；隔离权限/驱动动作对照通过；不是实物效果验收 | 拒绝时无驱动动作；成功 ACK 与完成分开；发送后断线不自动重试；重复调用与参考结果一致 | P4；[SET][set]、[INSTCMD][inst] |
 
@@ -74,16 +74,18 @@ B08 不能只断言“均失败”。使用固定 [server/neterr.h][errors] 中�
 | C02 | upsc ups [variable] | E/D | 全变量/单值、server.*、地址解析、错误/输出 | [upsc][upsc]；P1/P2 |
 | C03 | upsc -c ups | E/D；API/演示已提供，CLI 可替换尚缺 | 登录客户端列表和输出 | [upsc][upsc]；P2/P3 |
 | C04 | upsc -h / -V / -W | M/D | 帮助、版本、连接超时、合法/非法参数及环境覆盖 | [upsc][upsc]；P2 |
-| C05 | upsrw 默认 / -l | E/D | 完整变量、描述、类型、长度、选项、SELECTED 标记、当前值；不能只比较集合 | [upsrw][upsrw]；P1/P2 |
-| C06 | upsrw -s VAR=VALUE | M；库单值协议已实现，官方 CLI 合成写入对照通过，未实现替代 CLI | 非交互写入、值转义/边界、错误、完成语义 | [upsrw][upsrw]；P4 |
-| C07 | upsrw -s VAR；-u/-p | M | 交互输入值与缺失凭据提示、EOF/非 TTY；只用一次性假凭据 | [upsrw][upsrw]；P4 |
-| C08 | upsrw -w / -t | M；官方 SUCCESS 参考执行通过，未实现替代 CLI | tracking、超时默认/覆盖、失败结果/退出码 | [upsrw][upsrw]；P4 |
-| C09 | upsrw -h / -V / -W | M/D | 与该程序实际默认及错误逐项匹配 | [upsrw][upsrw]；P2 |
-| C10 | upscmd -l ups | E/D | 所有命令及描述、缺描述、顺序/文本、空集合 | [upscmd][upscmd]；P1/P2 |
-| C11 | upscmd ups command [value] | M；库协议已实现，原始 argv 拼接与库参数映射差异仍待验 | 无/有参数的实际传递、权限/错误及 ACK | [upscmd][upscmd]；P4 |
-| C12 | upscmd -u/-p；缺凭据交互 | M | 明文/TLS profile、提示、EOF/非 TTY、环境策略 | [upscmd][upscmd]；P4 |
-| C13 | upscmd -w / -t | M；官方 SUCCESS/ERR FAILED 及退出 0 参考已验证，未实现替代 CLI | 与 upsrw 同样逐项验收，不假定两客户端相同 | [upscmd][upscmd]；P4 |
-| C14 | upscmd -h / -V / -W | M/D | 参数/默认/输出/退出码及未知选项 | [upscmd][upscmd]；P2 |
+| C05 | upsrw 默认 / -l | E/U/D；原生 upsrw 默认/-l 输出已实现，官方差分待验 | 完整变量、描述、类型、长度、选项、SELECTED 标记、当前值；不能只比较集合 | [upsrw][upsrw]；P1/P2 |
+| C06 | upsrw -s VAR=VALUE | E/U/D；原生 upsrw -s 已实现；值/权限/范围差分待验，长输入等未完 | 非交互写入、值转义/边界、错误、完成语义 | [upsrw][upsrw]；P4 |
+| C07 | upsrw -s VAR；-u/-p | E/U/D；POSIX 用户名/密码/值提示已实现；三类提示差分待验，TTY/EOF 边界未完 | 交互输入值与缺失凭据提示、EOF/非 TTY；只用一次性假凭据 | [upsrw][upsrw]；P4 |
+| C08 | upsrw -w / -t | E/U/D；原生 -w/-t 已实现，10 秒默认/每秒轮询；0/1 秒及终态差分待验 | tracking、超时默认/覆盖、失败结果/退出码 | [upsrw][upsrw]；P4 |
+| C09 | upsrw -h / -V / -W | E/U/D；短选项与 -W 已实现；帮助/版本身份、非法选项及全部环境边界仍有差异 | 与该程序实际默认及错误逐项匹配 | [upsrw][upsrw]；P2 |
+| C10 | upscmd -l ups | E/U/D；原生 upscmd -l 已实现；精确列表文本差分待验，失败边界未完 | 所有命令及描述、缺描述、顺序/文本、空集合 | [upscmd][upscmd]；P1/P2 |
+| C11 | upscmd ups command [value] | E/U/D；原生 upscmd 原样拼接 argv，空/多词/引用/转义参数差分待验 | 无/有参数的实际传递、权限/错误及 ACK | [upscmd][upscmd]；P4 |
+| C12 | upscmd -u/-p；缺凭据交互 | E/U/D；原生 -u/-p 和 POSIX 提示已实现；TTY/EOF/Windows 等仍未完 | 明文/TLS profile、提示、EOF/非 TTY、环境策略 | [upscmd][upscmd]；P4 |
+| C13 | upscmd -w / -t | E/U/D；原生等待保留终态 ERR 退出 0、超时退出 1；官方差分待验 | 与 upsrw 同样逐项验收，不假定两客户端相同 | [upscmd][upscmd]；P4 |
+| C14 | upscmd -h / -V / -W | E/U/D；与 C09 相同的未完成项仍保留，不声称完整 CLI 可替换 | 参数/默认/输出/退出码及未知选项 | [upscmd][upscmd]；P2 |
+
+管理 CLI 的本批执行状态见 [admin-cli.md](admin-cli.md)；六行 NSS 日志差异明确保留，其余业务文本/退出码直接比较。新增单行 request_line 是受限交换，不等同于分离 send/read 或流式接口。
 
 JSON 是 moonnut 的额外输出模式，不是以上官方 CLI 的等价证据。保留扩展与是否要求精确 CLI 可替换，需要在 P0 记录。
 
@@ -98,12 +100,12 @@ JSON 是 moonnut 的额外输出模式，不是以上官方 CLI 的等价证据�
 | L03 | upscli_add_host_cert | M | 每主机证书名、校验、强制 TLS |
 | L04 | upscli_get | E/D | 通用 GET、结果形状/所有字段，N03–N06/N11/N12/N24/N25 |
 | L05 | upscli_list_start / upscli_list_next | D | 所有 LIST 与迭代、结束/错误、部分结果 |
-| L06 | upscli_sendline / upscli_sendline_timeout | M | 通用发送及指定超时；当前无任意命令入口 |
-| L07 | upscli_readline / upscli_readline_timeout | M | 原始读取、缓冲/超时/EOF |
-| L08 | upscli_splitname / upscli_splitaddr | M | B06 的地址语法、默认和错误 |
+| L06 | upscli_sendline / upscli_sendline_timeout | E/M/D | request_line 已提供受限单行交换；分离发送、写超时及流式入口仍缺 |
+| L07 | upscli_readline / upscli_readline_timeout | E/M/D | request_line 返回原始回复并可指定读超时；独立读取、完整缓冲/超时/EOF 映射仍缺 |
+| L08 | upscli_splitname / upscli_splitaddr | E/M/U | CLI 有基础地址解析；对应库公开 API、完整语法/错误对照仍缺 |
 | L09 | upscli_fd / upscli_ssl | E/M；is_tls/is_closed 已提供；无 FD 公共映射 | FD 与 TLS 会话状态；跨语言 ABI 目标单独决定 |
 | L10 | upscli_upserror / upscli_strerror | D | 错误码及消息，不等于统一 Query failed |
-| L11 | upscli_set_default_connect_timeout / upscli_get_default_connect_timeout / upscli_init_default_connect_timeout | M/D | 默认、解析、优先级与阻塞模式 |
+| L11 | upscli_set_default_connect_timeout / upscli_get_default_connect_timeout / upscli_init_default_connect_timeout | E/M/U/D；CLI 覆盖默认/优先级与 0 阻塞，完整 API/边界未完 | 默认、解析、优先级与阻塞模式 |
 | L12 | upscli_str_contains_token | E/U | 当前仅离线示例做精确状态 token；未作为对应公共 API 逐项验证 |
 | L13 | upscli_str_add_unique_token | M | 唯一性、容量、回调/拒绝与返回值；不是设备写入 |
 

@@ -37,7 +37,7 @@ CI 记录包版本、架构、官方 CLI 二进制 SHA-256 和动态库/TLS 后�
 | Layer / 层次 | Scope / 范围 | Current gap / 当前缺口 |
 | --- | --- | --- |
 | Network client library | 所有 N01–N30 请求、响应/错误/状态机、传输；C/C++/PyNUT 业务能力的 MoonBit 映射 | 持久会话、tracking 与控制协议已推进；库便捷映射、低层 API 等仍有缺口 |
-| Official client CLIs | upsc、upsrw、upscmd 的参数、默认、交互、输出/退出状态、等待语义 | `examples/query` 仍是演示，不是三个程序的替代品 |
+| Official client CLIs | upsc、upsrw、upscmd 的参数、默认、交互、输出/退出状态、等待语义 | 新增 cmd/upsrw 与 cmd/upscmd；query 仍为演示；完整输出/边界与 upsc 替代尚缺 |
 | Monitoring clients | upsmon、upslog、upssched、GUI/CGI 客户端功能，X09–X11/X14 | 未实现；逐程序/配置项继续展开，不能因当前为库而删除 |
 | Adjacent tools | X12/X13/X15 保留客户端相关扫描、配置及平台接入；非客户端后端按角色区分 | 需逐项映射；USB/物理驱动与服务端安装不纳入产品实现 |
 | Server/drivers | X01–X08 | 用户确认范围外；官方 upsd、dummy-ups、合成 socket 状态仅用于测试 |
@@ -101,3 +101,17 @@ real upsd tracking IDs and raw driver evidence. See controls.md for execution
 status. CLI replacement, convenience/library mappings and other matrix gaps
 remain open. Neither simulated completion nor passing selected traces proves
 physical effects or full client parity. No real UPS control or publication.
+
+## Management CLI increment / 管理 CLI 增量
+
+新增 cmd/upsrw、cmd/upscmd；覆盖列表、写入/命令、提示、原始参数、tracking 与退出语义。
+本地 49 项原生及四项 CLI 回环检查通过；25 场景官方差分执行状态见[管理 CLI](admin-cli.md)。
+NSS 后端日志、帮助身份、完整错误/超时/输入边界明确保留差异；不会把过滤日志后的比较
+称为完整 CLI 一致。监控功能与其他库能力仍在目标内，本批没有执行任何真实系统动作。
+
+English: Native management CLI implementations now cover common listing and
+control workflows. The staged 25-case comparison keeps raw outputs and driver
+observations, explicitly excludes six NSS diagnostic lines from semantic stderr
+comparison, and retains the corresponding parity gap. See admin-cli.md for actual
+execution status and remaining limits. Monitoring and other client capabilities
+remain in scope; no real UPS or host shutdown operation is performed.

@@ -95,6 +95,7 @@ pub async fn Session::login(Self, String) -> Unit
 pub async fn Session::logout(Self) -> Unit
 pub async fn Session::master(Self, String) -> Unit
 pub async fn Session::primary(Self, String) -> Unit
+pub async fn Session::request_line(Self, String, read_timeout_ms? : Int32) -> String
 pub async fn Session::set_password(Self, String) -> Unit
 pub async fn Session::set_tracking(Self, Bool) -> Unit
 pub async fn Session::set_username(Self, String) -> Unit

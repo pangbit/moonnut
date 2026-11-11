@@ -1,0 +1,8 @@
+import {
+  "moonbitlang/async",
+  "pangbit/moonnut/internal/admincli",
+}
+
+pkgtype(kind: "executable")
+
+supported_targets = "native"

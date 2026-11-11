@@ -23,6 +23,7 @@ performed manually by the maintainer; the existing 0.1.0 release is unchanged.
 - Fresh connections for `Client` reads; explicit persistent `Session` with all the same reads.
 - Session credentials, tracking, LOGIN/LOGOUT and serialized queries; no automatic reconnect or retry.
 - Explicit Session SET VAR, INSTCMD, PRIMARY/MASTER and FSD; acceptance is distinct from completion.
+- Native [upsrw/upscmd management CLIs](docs/admin-cli.md), with listing, prompts, control and tracking waits; remaining compatibility gaps are documented.
 - Separate connection/read timeouts, optional whole-operation deadline, and bounded responses.
 - NUT-style quoting and escaping, strict reply identity and list boundary checks.
 
