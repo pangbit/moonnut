@@ -1,5 +1,8 @@
 /* Read-only differential probe using the separately installed NUT C library.
  * Original test adapter; no upstream implementation is embedded here. */
+#include <stdint.h>
+#include <sys/types.h>
+#include <sys/time.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
