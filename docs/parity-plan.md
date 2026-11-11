@@ -25,7 +25,8 @@ English: The approved target is full NUT **client** functionality and observable
 | PyNUT | 固定 NUT 提交中的模块 1.8.0；SHA-256 `a12d1e40f8cd926314157c137372628322dd09db94d697aca4bc9dc8beb64f82`；与原 v2.8.3 参考文件逐字节相同 |
 | moonnut audit start | `709b5deb77afb33fbee940d2f5fa8e9a2bb1427c`；当时为 11 种业务读取，默认验证 TLS |
 | Toolchain | `moonc 0.10.20+65efd5b93`、async `0.22.4`、native |
-| Current query CLI evidence | [CI 42996781132](https://github.com/pangbit/moonnut/actions/runs/42996781132)；代码 `7aba3416dc8aa0f480fa9e805f6b1364e95d4442`：40 个 upsc 差分场景、49 项原生、20 项 JSON、14 项本库/原生查询 CLI TLS；官方默认传输及既有读取/会话/控制/管理 CLI 回归全部通过；帮助身份和 NSS 日志仍有差异 |
+| Current streaming evidence | [CI 43001143297](https://github.com/pangbit/moonnut/actions/runs/43001143297)；代码 `1a27d2b61c76c72483cf051c523d9b36e4626598`：53 项原生、27 项官方流式一致场景及既有回归通过；另复现 1 项 UTF-8 差异，保留 B01/D；连接清理及其他完整边界仍未关闭 |
+| Previous query CLI evidence | [CI 42996781132](https://github.com/pangbit/moonnut/actions/runs/42996781132)；代码 `7aba3416dc8aa0f480fa9e805f6b1364e95d4442`：40 个 upsc 差分场景、49 项原生、20 项 JSON、14 项本库/原生查询 CLI TLS；官方默认传输及既有读取/会话/控制/管理 CLI 回归全部通过；帮助身份和 NSS 日志仍有差异 |
 | Previous management CLI evidence | [CI 42993115828](https://github.com/pangbit/moonnut/actions/runs/42993115828)；代码 `fbc9b9bf77987128aae3f2d280a90fb955d224c6`：49 项原生、25 个管理 CLI 场景、18 条驱动请求、7 个 ID；六行 NSS 日志排除规则及剩余差异明确保留 |
 | Previous control evidence | [CI 42988803694](https://github.com/pangbit/moonnut/actions/runs/42988803694)；代码 `0e5413fe7f4ac2090c27fb491525e08279223105`：48 项原生、52 项控制结果、15 条驱动请求、8 个 tracking ID、三次官方 CLI；既有读取/会话/TLS/JSON 回归通过 |
 | Previous session evidence | [CI 42984926159](https://github.com/pangbit/moonnut/actions/runs/42984926159)；代码 `c2527e0457a2905c610661fde1b5e341c9c95b3a`：45 个原生测试、既有 TLS/JSON/真实 upsd 对照及会话 44 项结果 × 3 种传输配置全部通过 |
@@ -132,10 +133,10 @@ full error/platform behavior and other client API work remain in scope.
 ## Streaming increment / 流式增量
 
 推进 B03/L05/C01–C03：作用域 LIST 迭代器及 upsc 部分结果行为。保留严格类型化整表
-接口和资源上限差异。53 项原生、28 个脚本场景本地通过，首次官方对照发现 UTF-8 分词差异；27 项一致性对照待完整重跑。
+接口和资源上限差异。53 项原生、28 个脚本场景本地通过，首次官方对照发现 UTF-8 分词差异；27 项一致性场景及既有回归已通过 CI 43001143297，另 1 项差异被直接复现，未计入一致数。
 [流式文档](streaming.md)区分库异常与官方 CLI 的部分列表退出 0 语义，以及实际证据。
 
 English: Scoped streaming and upsc partial-result behavior are implemented; the
-28-case suite found a UTF-8 parser difference; 27 matching cases await a complete
-rerun. Full parser, buffering, lifecycle and
+28-case suite passed 27 official matching cases and separately reproduced one
+UTF-8 difference in CI 43001143297. Full parser, buffering, lifecycle and
 platform equivalence remain open. No controls, host shutdown or publishing added.

@@ -77,8 +77,8 @@ checks parsing/diagnostics, not deadline behavior or elapsed-time equivalence.
 Remaining differences and unverified boundaries stay in the [matrix](parity-matrix.md):
 
 - Lists now use the [scoped streaming reader](streaming.md). Selected partial-output,
-  extra-field and list-error behavior is implemented; official streaming comparison
-  is pending. Resource limits, full parsing and pipe/TTY behavior still differ or
+  extra-field and list-error behavior passed 27 official comparisons; a UTF-8 parser
+  difference was separately reproduced. Resource limits, full parsing and pipe/TTY behavior still differ or
   remain unverified.
 - Help/version, unknown-option/missing-option diagnostics, NSS/debug/config output,
   full server-error catalog and DNS/connect/IO/TLS error text remain incomplete.

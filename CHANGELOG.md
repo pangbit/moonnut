@@ -5,9 +5,10 @@
 - Add scoped LIST streaming with incremental rows and explicit failure cleanup.
   Align upsc partial output, extra fields and selected list-error exit behavior.
   Local 53 native tests and 28 streaming cases pass. Official comparison exposed a
-  UTF-8 parser difference, retained explicitly; 27 matching cases await a full rerun.
+  UTF-8 parser difference, retained explicitly; 27 matching cases and prior regressions
+  pass pinned Linux CI. The known difference is not counted as matching.
 - 新增作用域 LIST 流式读取、部分结果和异常清理；推进 upsc 额外字段及部分失败退出语义。
-  本地 53 项原生和 28 项流式场景通过；官方 UTF-8 分词差异已明确保留，27 项一致性场景待完整重跑。
+  53 项原生、27 项官方一致场景及既有回归通过；另 1 项 UTF-8 分词差异已复现并明确保留，未计入一致数。
 
 - Add native upsc for UPS/variable/consumer queries, common argument/error behavior
   and connection timeout options. Add four local transport checks and a 40-case

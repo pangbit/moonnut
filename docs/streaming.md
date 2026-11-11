@@ -64,7 +64,11 @@ so the library's incremental delivery is tested independently of CLI buffering.
 
 Local macOS validation passes **53 native tests** (four new lifecycle tests),
 **28 scripted upsc cases**, the existing 20 JSON and 14 library/query-CLI TLS checks.
-**The official Linux streaming differential is pending execution.**
+**[CI 43001143297](https://github.com/pangbit/moonnut/actions/runs/43001143297) passed
+27 matching streaming cases and separately reproduced one known UTF-8 difference.**
+Code: `1a27d2b61c76c72483cf051c523d9b36e4626598`. The same run passed all
+53 native tests, prior 40 query/25 management CLI scenarios, read/session/control
+comparisons, JSON and TLS regressions.
 The [script](../scripts/list_stream_integration.py) uses disposable loopback sockets,
 no daemon, device, credentials or LOGIN. These 28 cases use plaintext after STARTTLS
 refusal; mid-list TLS failures are not directly compared by this suite. Existing
@@ -80,7 +84,7 @@ deliberately rejects non-ASCII bytes; the diagnostic hex representation also dep
 on char signedness. moonnut retains the valid UTF-8 text. The revised suite keeps
 this as a separately asserted **known parity gap**, including every diagnostic;
 it is not a matching case and not removed by NSS normalization. Full parser-profile
-alignment remains required. The other 27 cases still require a completed rerun.
+alignment remains required. All other 27 cases passed the completed rerun above. This is not a 28-case parity claim.
 
 The `list-stream.json` CI artifact retains reply bytes as hex, raw client requests,
 outputs and expected results. Only the six documented NSS diagnostics are excluded
@@ -109,7 +113,8 @@ BEGIN 前完整 ERR 可恢复；读失败、提前返回、回调失败或取消
 本地 53 项原生、28 项脚本场景及既有 JSON/TLS 检查通过。首次官方运行在第 21 个
 UTF-8 场景发现差异而失败：参考 parseconf 丢弃高位字节并发出逐字节诊断，moonnut 保留
 合法 UTF-8。它仍是 B01/D 待解决项，不过滤、不算一致；修订脚本分别断言双方结果，
-其余 27 场景待完整重跑。
+其余 27 场景已通过[完整重跑 CI 43001143297](https://github.com/pangbit/moonnut/actions/runs/43001143297)，
+53 项原生、既有 40 个查询 CLI、25 个管理 CLI 及其他全部回归也通过；不能称 28 项一致。
 新增四项原生测试检查先取得行再发 END、作用域、异常、取消、提前退出、上限及可恢复 ERR。
 脚本只使用 STARTTLS 被拒绝后的明文回环合成回复，保存原始证据；中途 TLS 失败未直接
 对照。未完成连接的清理/LOGOUT、完整分词、缓冲边界及

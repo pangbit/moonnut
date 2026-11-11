@@ -49,7 +49,7 @@ N01–N30 覆盖固定版本顶层命令及 GET/LIST/SET 分支；GET TRACKING �
 | --- | --- | --- | --- | --- |
 | B01 | 分词/编码/转义 | E/U/D；官方 parseconf 丢弃 UTF-8 高位字节并警告，moonnut 保留合法 UTF-8；已取得差异证据，未关闭 | 与 parseconf、各客户端编码器比较引号、反斜线、#、=、空串、制表符、非 ASCII、非法字节；明确哪些差异由目标决定 | P1；[parseconf][parse] |
 | B02 | 大小写、行结束与形状 | E/U/D；响应标识已按 ASCII 忽略大小写 | 命令/UPS/变量/返回标识大小写、LF/CRLF、分段/粘包、多余 token、缺 END、重复记录；不得仅测试本库严格拒绝 | P1；[C 实现][cimpl] |
-| B03 | 流式列表/部分结果 | E/U/D；with_list/next 已实现；53 项原生和 28 个本地场景通过；UTF-8 差异已证实，27 项一致性对照待完整重跑 | 通用流式与原有类型化整表接口的区别、EOF/错误时可见的部分结果、取消后的连接状态 | P1/P2；[C API][capi] |
+| B03 | 流式列表/部分结果 | E/U/D；with_list/next 已实现；53 项原生、27 项官方一致场景通过；UTF-8 与清理差异已证实，完整边界未完 | 通用流式与原有类型化整表接口的区别、EOF/错误时可见的部分结果、取消后的连接状态 | P1/P2；[C API][capi] |
 | B04 | 连接与会话生命周期 | E/U/D；显式会话/关闭、串行化、请求与排队取消；不自动重连，其他生命周期仍待验 | 连接/断开/显式重连、凭据与登录状态、跟踪状态、多个查询；并发和恢复是否属目标 API | P3；[C++ API][cpp] |
 | B05 | TLS 默认与策略选项 | E/U/D；用户确认官方默认，本批次落实 TRYSSL/明文凭据 | TRYSSL/REQSSL/CERTVERIF、明文模式/凭据、信任源、每主机策略、客户端证书、握手拒绝；NSS/OpenSSL/无 TLS 分 profile | P1/P3；[C API][capi] |
 | B06 | 地址解析与连接目标 | M/U | ups@host:port、默认 localhost:3493、IPv6 方括号、IPv4/IPv6 选择、DNS/连接失败 | P2；[C 实现][cimpl] |
@@ -71,7 +71,7 @@ B08 不能只断言“均失败”。使用固定 [server/neterr.h][errors] 中�
 | ID | 程序与操作 | 当前状态 | 验收内容 | 来源/阶段 |
 | --- | --- | --- | --- | --- |
 | C01 | upsc -l / -L [host] | E/U/D；原生 CLI 双设备精确输出已对照；默认地址等未完 | 名称/名称+描述、默认地址、端口、精确格式 | [upsc][upsc]；P2 |
-| C02 | upsc ups [variable] | E/U/D；原生 CLI 全表/单值/server.* 与常见错误精确输出已对照；选定流式已实现待对照，完整错误未完 | 全变量/单值、server.*、地址解析、错误/输出 | [upsc][upsc]；P1/P2 |
+| C02 | upsc ups [variable] | E/U/D；原生 CLI 全表/单值/server.* 与常见错误精确输出已对照；27 项选定流式已对照；UTF-8/完整错误未完 | 全变量/单值、server.*、地址解析、错误/输出 | [upsc][upsc]；P1/P2 |
 | C03 | upsc -c ups | E/U/D；原生 -c 零/一/二个消费者、重复地址及注销后空列表已对照；完整边界未完 | 登录客户端列表和输出 | [upsc][upsc]；P2/P3 |
 | C04 | upsc -h / -V / -W | E/U/D；零/小数/非法超时及环境、常用地址/错误已对照；帮助身份/完整诊断/精度等未完 | 帮助、版本、连接超时、合法/非法参数及环境覆盖 | [upsc][upsc]；P2 |
 | C05 | upsrw 默认 / -l | E/U/D；原生 upsrw 默认/-l 有序列表文本已通过[管理 CLI 对照][admin-ci] | 完整变量、描述、类型、长度、选项、SELECTED 标记、当前值；不能只比较集合 | [upsrw][upsrw]；P1/P2 |
@@ -169,7 +169,7 @@ X01–X08 为 **O**：用户明确不实现服务端或 UPS 驱动及其管理�
 
 查询 CLI 增量见 [query-cli.md](query-cli.md)：C01–C04 已有原生实现，40 场景直接差分已通过 [CI 42996781132](https://github.com/pangbit/moonnut/actions/runs/42996781132)（代码 `7aba3416dc8aa0f480fa9e805f6b1364e95d4442`）；49 项原生、20 项 JSON、14 项本库/查询 CLI 传输及全部既有回归通过。流式部分结果、完整错误与平台边界等仍保留 U/D。
 
-流式增量见 [streaming.md](streaming.md)：新增 with_list/next 和 upsc 逐行消费；53 项原生与 28 个本地场景通过；首次官方执行发现 UTF-8 差异（B01/D），27 项一致性对照待完整重跑。B03/L05/C01–C03 仅补对应场景，不关闭完整流式/平台/资源差异。
+流式增量见 [streaming.md](streaming.md)：新增 with_list/next 和 upsc 逐行消费；53 项原生、27 项官方一致场景及既有回归已通过 [CI 43001143297](https://github.com/pangbit/moonnut/actions/runs/43001143297)（代码 `1a27d2b61c76c72483cf051c523d9b36e4626598`）；另直接复现 1 项 UTF-8 差异（B01/D），未计入一致数。B03/L05/C01–C03 仅补对应场景，不关闭完整流式/平台/资源差异。
 
 每个验收 ID 至少关联 `reference profile → case/input/state → reference result → moonnut result → diff → evidence → verdict`。跨行共用一个真实场景可以，但各断言须可定位。`未实现`、`未测`、`环境阻塞`、`双方行为冲突待裁定` 都不能记作通过。已经选择的范围内，任何未解决差异都阻止“完全一致”的结论。
 
