@@ -164,6 +164,7 @@ async fn Client::query(
   command : String,
   header : Array[String],
   list : Bool,
+  row_values~ : Int32 = 2,
 ) -> Array[Array[String]] {
   @async.with_timeout(self.timeout_ms, () => {
     let tcp = @socket.Tcp::connect_to_host(self.host, port=self.port)
@@ -218,7 +219,7 @@ async fn Client::query(
       if rows.length() >= self.max_rows {
         raise LimitExceeded("rows")
       }
-      if row.length() != header.length() + 2 {
+      if row.length() != header.length() + row_values {
         raise Protocol("invalid list row shape")
       }
       for i in 0..<header.length() {
@@ -350,3 +351,89 @@ pub extend Variable with Eq::{equal, not_equal}
 
 ///|
 pub extend Variable with @debug.Debug::{to_repr}
+
+///|
+/// Discover writable variables and their current values without modifying them.
+pub async fn Client::list_rw(self : Client, ups : String) -> Array[Variable] {
+  let rows = self.query("LIST RW " + quote_argument(ups), ["RW", ups], true)
+  rows.map(row => { name: row[2], value: row[3], })
+}
+
+///|
+/// Allowed values in server order. Read the current value separately with get_var.
+pub async fn Client::list_enum(
+  self : Client,
+  ups : String,
+  name : String,
+) -> Array[String] {
+  let rows = self.query(
+    "LIST ENUM " + quote_argument(ups) + " " + quote_argument(name),
+    ["ENUM", ups, name],
+    true,
+    row_values=1,
+  )
+  rows.map(row => row[3])
+}
+
+///|
+/// One advertised interval. Endpoints remain server strings without numeric coercion.
+#derive(Eq, @debug.Debug)
+pub(all) struct VariableRange {
+  min : String
+  max : String
+}
+
+///|
+/// Preserve every interval in server order, including gaps between ranges.
+pub async fn Client::list_range(
+  self : Client,
+  ups : String,
+  name : String,
+) -> Array[VariableRange] {
+  let rows = self.query(
+    "LIST RANGE " + quote_argument(ups) + " " + quote_argument(name),
+    ["RANGE", ups, name],
+    true,
+  )
+  rows.map(row => { min: row[3], max: row[4], })
+}
+
+///|
+/// Discover command names only. This client cannot execute instant commands.
+pub async fn Client::list_commands(
+  self : Client,
+  ups : String,
+) -> Array[String] {
+  let rows = self.query(
+    "LIST CMD " + quote_argument(ups),
+    ["CMD", ups],
+    true,
+    row_values=1,
+  )
+  rows.map(row => row[2])
+}
+
+///|
+/// Read an instant command description without invoking the command.
+pub async fn Client::get_command_description(
+  self : Client,
+  ups : String,
+  command : String,
+) -> String {
+  let rows = self.query(
+    "GET CMDDESC " + quote_argument(ups) + " " + quote_argument(command),
+    [],
+    false,
+  )
+  match rows[0] {
+    ["CMDDESC", device, name, description] if device == ups && name == command =>
+      description
+    _ => raise Protocol("invalid command description response")
+  }
+}
+
+///|
+pub extend VariableRange with Eq::{equal, not_equal}
+
+///|
+pub extend VariableRange with @debug.Debug::{to_repr}

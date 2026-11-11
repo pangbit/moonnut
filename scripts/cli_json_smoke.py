@@ -74,9 +74,24 @@ def main():
     run_case(b'GET TYPE "demo" "battery.charge"\n', 'TYPE demo battery.charge\n',
              ["--type", "demo", "battery.charge"],
              {"ups": "demo", "name": "battery.charge", "types": []})
+    run_case(b'LIST RW "demo"\n',
+             'BEGIN LIST RW demo\nRW demo ups.id "020"\nEND LIST RW demo\n',
+             ["--rw", "demo"], [{"name": "ups.id", "value": "020"}])
+    run_case(b'LIST ENUM "demo" "ups.mode"\n',
+             'BEGIN LIST ENUM demo ups.mode\nENUM demo ups.mode "Eco mode"\nENUM demo ups.mode ""\nEND LIST ENUM demo ups.mode\n',
+             ["--enum", "demo", "ups.mode"], {"ups": "demo", "name": "ups.mode", "values": ["Eco mode", ""]})
+    run_case(b'LIST RANGE "demo" "input.transfer.low"\n',
+             'BEGIN LIST RANGE demo input.transfer.low\nRANGE demo input.transfer.low "90" "100"\nRANGE demo input.transfer.low "102" "105"\nEND LIST RANGE demo input.transfer.low\n',
+             ["--range", "demo", "input.transfer.low"],
+             {"ups": "demo", "name": "input.transfer.low", "ranges": [{"min": "90", "max": "100"}, {"min": "102", "max": "105"}]})
+    run_case(b'LIST CMD "demo"\n', 'BEGIN LIST CMD demo\nCMD demo load.off\nEND LIST CMD demo\n',
+             ["--commands", "demo"], ["load.off"])
+    run_case(b'GET CMDDESC "demo" "load.off"\n', 'CMDDESC demo load.off "Turn off the load immediately"\n',
+             ["--cmd-desc", "demo", "load.off"],
+             {"ups": "demo", "command": "load.off", "description": "Turn off the load immediately"})
     run_case(b"LIST UPS\n", "BEGIN LIST UPS\nEND LIST UPS\n", [], [])
     run_case(b"LIST UPS\n", "ERR ACCESS-DENIED\n", [], success=False)
-    print("CLI JSON smoke: escaped UTF-8, lists, scalar read, metadata, empty result and failure exit passed (9 cases)")
+    print("CLI JSON smoke: escaped UTF-8, lists, scalar read, metadata, discovery, empty result and failure exit passed (14 cases)")
 
 
 if __name__ == "__main__":

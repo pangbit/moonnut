@@ -2,6 +2,15 @@
 
 ## Unreleased / 未发布
 
+- Add read-only RW/ENUM/RANGE and command discovery, preserving every range as
+  string endpoints and validating each command's exact row shape.
+- Add five CLI/JSON operations, bilingual examples and bounded malformed-response
+  coverage; compare real upsd discovery with list-only upsrw/upscmd. ENUM/RANGE
+  use synthetic driver state because dummy-ups does not provide these metadata.
+- 新增只读 RW/ENUM/RANGE 与命令发现，保留多个独立区间的字符串端点并严格校验各命令行格式。
+- 增加五种 CLI/JSON 操作、双语示例与畸形响应测试，使用官方 upsrw/upscmd 只读模式对照
+  真实 upsd；ENUM/RANGE 由合成驱动状态提供，不冒充 dummy-ups 或实物覆盖。
+
 - Add read-only UPS/variable descriptions and raw multi-token type metadata,
   query CLI options, and an offline exact-token UPS status example.
 - Compare metadata with official upsc/upsrw in list-only mode on a virtual UPS;

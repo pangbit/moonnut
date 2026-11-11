@@ -13,6 +13,7 @@ performed manually by the maintainer; the existing 0.1.0 release is unchanged.
 
 - `LIST UPS`, `LIST VAR` and `GET VAR`, with typed device/variable results.
 - `GET UPSDESC`, `GET DESC` and `GET TYPE` for descriptions and raw type metadata.
+- `LIST RW` / `ENUM` / `RANGE`, `LIST CMD` and `GET CMDDESC` for read-only capability discovery.
 - Verified STARTTLS by default, using system roots or an explicit PEM CA file.
 - Optional `USERNAME` / `PASSWORD` submission **only after verified TLS**.
 - One fresh connection per query; no shared stream, pooling, automatic retries or downgrade.
@@ -27,7 +28,9 @@ Only use it against servers you are authorized to query.
 **Verification boundary:** tests cover synthetic loopback NUT/TLS servers and
 actual NUT 2.8.4 `upsd` + `dummy-ups` programs with a virtual UPS in isolated
 Ubuntu CI. The suite compares lists, values and UPS descriptions with official `upsc`,
-selected variable descriptions/types with read-only `upsrw -l`,
+selected variable descriptions/types and writable variables with read-only `upsrw -l`,
+command metadata with `upscmd -l`, and enum/multiple-range metadata through a
+second synthetic driver-state fixture connected to real upsd,
 and UPS/variable lists with pinned PyNUT in a separate process on the same daemon.
 See the [comparison scope and reproduction steps](docs/comparison.md) and
 [CI results](https://github.com/pangbit/moonnut/actions/workflows/ci.yml).
@@ -84,6 +87,8 @@ For three complete consumer workflows, fixture commands and expected results, se
 [read-only use scenarios](docs/scenarios.md).
 For metadata queries and an offline multi-flag status interpreter, see
 [descriptions, types and status](docs/metadata.md).
+For writable-variable options, separate ranges and command metadata, see
+[read-only capability discovery](docs/discovery.md).
 
 ## Three-minute demonstration
 
@@ -214,7 +219,8 @@ python3 scripts/reference_smoke.py /external/path/PyNUT.py
 python3 scripts/upsd_integration.py --pynut /external/path/PyNUT.py
 ```
 
-MoonBit tests also cover metadata replies and exact multi-word status flags.
+MoonBit tests also cover metadata/discovery replies, command-specific row shapes,
+multiple ranges, and exact multi-word status flags.
 MoonBit tests cover parsing, injection rejection, fragmented/coalesced replies,
 error handling, identifier matching, empty lists, EOF, TLS refusal, timeout and
 resource bounds. Lifecycle tests verify server-observed EOF after timeout or

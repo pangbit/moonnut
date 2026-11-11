@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Disposable NUT upsd + dummy-ups interoperability demo, no physical UPS access.
+"""Disposable NUT upsd + synthetic UPS interoperability demo, no physical UPS access.
 
 Requires Linux NUT 2.8+ (nut-server and nut-client), OpenSSL, Python 3.9+, and a built
 examples/query executable. NSS-enabled NUT also needs libnss3-tools.
@@ -20,6 +20,7 @@ import socket
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -31,6 +32,77 @@ EXPECTED = {
     "battery.charge": "100",
     "battery.runtime": "600",
 }
+
+
+class DiscoveryDriver:
+    """Minimal synthetic driver state for real upsd, not a physical/dummy driver.
+
+    dummy-ups does not advertise ENUM/RANGE metadata. This fixture supplies two
+    disjoint ranges and a string enum through NUT's documented Unix socket
+    protocol, so official upsrw and moonnut read the same real upsd responses.
+    No client write or instant command is accepted.
+    """
+    def __init__(self, folder):
+        self.listener = socket.socket(socket.AF_UNIX)
+        self.listener.bind(str(folder / "moonnut-fixture-metadata"))
+        self.listener.listen(1)
+        self.listener.settimeout(0.2)
+        self.stop = threading.Event()
+        self.errors = []
+        self.worker = threading.Thread(target=self.serve, daemon=True)
+        self.worker.start()
+
+    def serve(self):
+        state = (
+            'SETINFO ups.status "OL"\n'
+            'SETINFO ups.beeper.status "enabled"\n'
+            'SETFLAGS ups.beeper.status RW STRING\n'
+            'SETAUX ups.beeper.status 16\n'
+            'ADDENUM ups.beeper.status "enabled"\n'
+            'ADDENUM ups.beeper.status "disabled"\n'
+            'SETINFO input.transfer.low "95"\n'
+            'SETFLAGS input.transfer.low RW NUMBER\n'
+            'ADDRANGE input.transfer.low 90 100\n'
+            'ADDRANGE input.transfer.low 102 105\n'
+            'ADDCMD load.off\n'
+            'ADDCMD test.battery.start.quick\n'
+            'DATAOK\nDUMPDONE\n'
+        ).encode()
+        try:
+            while not self.stop.is_set():
+                try:
+                    conn, _ = self.listener.accept()
+                except socket.timeout:
+                    continue
+                with conn:
+                    conn.settimeout(0.2)
+                    pending = b""
+                    while not self.stop.is_set():
+                        try:
+                            chunk = conn.recv(4096)
+                        except socket.timeout:
+                            continue
+                        if not chunk:
+                            break
+                        pending += chunk
+                        assert len(pending) < 8192, "driver request too long"
+                        while b"\n" in pending:
+                            line, pending = pending.split(b"\n", 1)
+                            if line == b"DUMPALL":
+                                conn.sendall(state)
+                            elif line == b"PING":
+                                conn.sendall(b"PONG\n")
+                            else:
+                                raise AssertionError("unexpected driver request: " + repr(line))
+        except Exception as error:
+            self.errors.append(error)
+
+    def close(self):
+        self.stop.set()
+        self.worker.join(2)
+        self.listener.close()
+        assert not self.worker.is_alive(), "fixture driver failed to stop"
+        assert not self.errors, self.errors
 
 
 def locate(name, candidates=()):
@@ -93,6 +165,20 @@ def upsc_mapping(result):
     return dict(line.split(": ", 1) for line in result.stdout.splitlines())
 
 
+def rw_sections(result):
+    assert result.returncode == 0, result.stdout + result.stderr
+    sections = {}
+    current = None
+    for line in result.stdout.splitlines():
+        if line.startswith("[") and line.endswith("]"):
+            current = line[1:-1]
+            assert current not in sections, "duplicate upsrw variable"
+            sections[current] = []
+        elif current and line:
+            sections[current].append(line)
+    return sections
+
+
 def configure_tls(folder, upsd):
     """Create an ephemeral server identity for the installed NUT TLS backend."""
     cert, key = folder / "cert.pem", folder / "key.pem"
@@ -142,9 +228,10 @@ def main():
     driver = locate("dummy-ups", ("/lib/nut/dummy-ups", "/usr/lib/nut/dummy-ups", "/usr/libexec/nut/dummy-ups"))
     upsc = locate("upsc")
     upsrw = locate("upsrw")
+    upscmd = locate("upscmd")
     env = {k: v for k, v in os.environ.items()
            if not k.startswith(("MOONNUT_", "NUT_"))}
-    for program in (upsd, driver, upsc, upsrw):
+    for program in (upsd, driver, upsc, upsrw, upscmd):
         version = run([program, "-V"], env)
         assert version.returncode == 0, version.stderr
         banner = (version.stdout + version.stderr).strip().splitlines()[0]
@@ -164,7 +251,9 @@ def main():
         (folder / "ups.conf").write_text(
             f"statepath = {folder}\n[demo]\n  driver = dummy-ups\n"
             f"  port = {folder / 'demo.dev'}\n  mode = dummy-once\n"
-            '  desc = "Synthetic demo UPS"\n')
+            '  desc = "Synthetic demo UPS"\n'
+            '[metadata]\n  driver = moonnut-fixture\n  port = unused\n'
+            '  desc = "Synthetic discovery state"\n')
         (folder / "demo.dev").write_text(
             "ups.mfr: moonnut-fixture\n" +
             "".join(f"{key}: {value}\n" for key, value in EXPECTED.items()))
@@ -177,6 +266,7 @@ def main():
         for file in folder.iterdir():
             if file.is_file():
                 file.chmod(0o600)
+        discovery_driver = DiscoveryDriver(folder)
         with (folder / "process.log").open("w+") as log:
             try:
                 username = getpass.getuser()
@@ -197,11 +287,15 @@ def main():
                         values = dict(line.split(": ", 1) for line in result.stdout.splitlines()
                                       if ": " in line)
                         if all(k in values for k in EXPECTED):
-                            reference = values
-                            break
+                            metadata_ready = run([upsc, f"metadata@127.0.0.1:{port}"], env)
+                            if metadata_ready.returncode == 0:
+                                metadata_values = upsc_mapping(metadata_ready)
+                                if all(k in metadata_values for k in ("ups.beeper.status", "input.transfer.low")):
+                                    reference = values
+                                    break
                     time.sleep(0.1)
                 if reference is None:
-                    raise RuntimeError("NUT dummy device did not become ready: " +
+                    raise RuntimeError("NUT synthetic devices did not become ready: " +
                                        result.stdout + result.stderr)
 
                 def query(*args):
@@ -215,7 +309,7 @@ def main():
                 endpoint = f"127.0.0.1:{port}"
                 devices = {item["name"]: item["description"]
                            for item in json.loads(query("--json"))}
-                assert devices == upsc_mapping(run([upsc, "-L", endpoint], env)) == {"demo": "Synthetic demo UPS"}
+                assert devices == upsc_mapping(run([upsc, "-L", endpoint], env)) == {"demo": "Synthetic demo UPS", "metadata": "Synthetic discovery state"}
                 variables = {item["name"]: item["value"]
                              for item in json.loads(query("--vars", "demo", "--json"))}
                 reference = upsc_mapping(run([upsc, "demo@" + endpoint], env))
@@ -225,21 +319,12 @@ def main():
                     scalar = run([upsc, "demo@" + endpoint, name], env)
                     assert scalar.returncode == 0 and scalar.stdout.rstrip("\n") == expected, name
                     assert json.loads(query("--get", "demo", name, "--json"))["value"] == expected, name
-                print(f"PASS: LIST UPS ({len(devices)} device), complete LIST VAR ({len(variables)} values) and 4 direct GET VAR reads match upsc")
+                print(f"PASS: LIST UPS ({len(devices)} devices), complete LIST VAR ({len(variables)} values) and 4 direct GET VAR reads match upsc")
                 ups_description = json.loads(query("--ups-desc", "demo", "--json"))
                 assert ups_description == {"ups": "demo", "description": devices["demo"]}
                 # Official upsrw in list-only mode reads DESC/TYPE. Never use -s.
                 # Compare known string/numeric fixture fields, not its full UI.
-                rw = run([upsrw, "-l", "demo@" + endpoint], env)
-                assert rw.returncode == 0, rw.stderr
-                sections = {}
-                current = None
-                for line in rw.stdout.splitlines():
-                    if line.startswith("[") and line.endswith("]"):
-                        current = line[1:-1]
-                        sections[current] = []
-                    elif current and line:
-                        sections[current].append(line)
+                sections = rw_sections(run([upsrw, "-l", "demo@" + endpoint], env))
                 for name, kind in (("ups.model", "STRING"), ("battery.charge", "NUMBER")):
                     section = sections[name]
                     description = json.loads(query("--desc", "demo", name, "--json"))
@@ -255,6 +340,51 @@ def main():
                     else:
                         assert set(types) == {"RW", "NUMBER"}
                 print("PASS: GET UPSDESC matches upsc -L; GET DESC/TYPE match read-only upsrw -l for string and numeric fixtures")
+                writable = {item["name"]: item["value"]
+                            for item in json.loads(query("--rw", "demo", "--json"))}
+                assert set(writable) == set(sections), "LIST RW names differ from upsrw -l"
+                assert writable == {name: variables[name] for name in sections}
+                def commands_for(device):
+                    result = run([upscmd, "-l", device + "@" + endpoint], env)
+                    assert result.returncode == 0, result.stderr
+                    descriptions = dict(line.split(" - ", 1) for line in result.stdout.splitlines()
+                                        if " - " in line)
+                    commands = json.loads(query("--commands", device, "--json"))
+                    assert sorted(commands) == sorted(descriptions) and commands
+                    for command in commands:
+                        description = json.loads(query("--cmd-desc", device, command, "--json"))
+                        assert description == {"ups": device, "command": command,
+                                               "description": descriptions[command]}
+                    return commands
+
+                commands_for("demo")
+                # These reads use real upsd with synthetic driver state, not dummy-ups.
+                metadata_sections = rw_sections(run([upsrw, "-l", "metadata@" + endpoint], env))
+
+                def options_for(name):
+                    # upsrw adds SELECTED to its UI, not to protocol ENUM/RANGE rows.
+                    return sorted(line.removeprefix('Option: "').removesuffix(' SELECTED').removesuffix('"')
+                                  for line in metadata_sections[name] if line.startswith('Option: "'))
+
+                metadata_writable = {item["name"]: item["value"]
+                                     for item in json.loads(query("--rw", "metadata", "--json"))}
+                assert set(metadata_writable) == set(metadata_sections)
+                assert metadata_writable == {"ups.beeper.status": "enabled", "input.transfer.low": "95"}
+                for name, expected_types in (("ups.beeper.status", {"RW", "ENUM", "STRING:16"}),
+                                             ("input.transfer.low", {"RW", "RANGE", "NUMBER"})):
+                    assert set(json.loads(query("--type", "metadata", name, "--json"))["types"]) == expected_types
+                enum = json.loads(query("--enum", "metadata", "ups.beeper.status", "--json"))
+                assert enum["ups"] == "metadata" and enum["name"] == "ups.beeper.status"
+                assert set(enum["values"]) == {"enabled", "disabled"} and len(enum["values"]) == 2
+                assert sorted(enum["values"]) == options_for("ups.beeper.status")
+                ranges = json.loads(query("--range", "metadata", "input.transfer.low", "--json"))
+                assert ranges["ups"] == "metadata" and ranges["name"] == "input.transfer.low"
+                assert sorted((r["min"], r["max"]) for r in ranges["ranges"]) == [("102", "105"), ("90", "100")]
+                assert sorted(interval["min"] + '-' + interval["max"] for interval in ranges["ranges"]) == options_for("input.transfer.low")
+                assert set(commands_for("metadata")) == {"load.off", "test.battery.start.quick"}
+                print("PASS: LIST RW matches upsrw -l; LIST CMD/GET CMDDESC match upscmd -l on dummy-ups")
+                print("PASS: real upsd + synthetic driver state RW/TYPE/ENUM and disjoint RANGE 90..100, 102..105 match upsrw -l; two commands and descriptions match upscmd -l")
+
                 # The public CLI intentionally redacts errors. Compare failure,
                 # not exception types/messages; inspect known reference errors.
                 for options, reference_args, message in (
@@ -285,7 +415,7 @@ def main():
                 secure = run(trusted + ["--get", "demo", "ups.status"], auth_env)
                 assert secure.returncode == 0 and secure.stdout.strip() == EXPECTED["ups.status"], "verified NUT TLS/auth GET failed"
                 secure_devices = run(trusted, auth_env)
-                assert secure_devices.returncode == 0 and secure_devices.stdout.strip() == "demo\tSynthetic demo UPS", "verified NUT TLS/auth LIST UPS failed"
+                assert secure_devices.returncode == 0 and set(secure_devices.stdout.strip().splitlines()) == {"demo\tSynthetic demo UPS", "metadata\tSynthetic discovery state"}, "verified NUT TLS/auth LIST UPS failed"
                 secure_variables = run(trusted + ["--vars", "demo"], auth_env)
                 assert secure_variables.returncode == 0, "verified NUT TLS/auth LIST VAR failed"
                 secure_values = dict(line.split("\t", 1) for line in secure_variables.stdout.strip().splitlines())
@@ -294,7 +424,7 @@ def main():
                 # NUT stores USERNAME/PASSWORD for later privileged commands.
                 # Anonymous reads may still succeed; OK is not an auth verdict.
                 if wrong_password.returncode == 0:
-                    assert wrong_password.stdout.strip() == "demo\tSynthetic demo UPS"
+                    assert set(wrong_password.stdout.strip().splitlines()) == {"demo\tSynthetic demo UPS", "metadata\tSynthetic discovery state"}
                     print("NUT permits read-only queries after a wrong password; credentials are not proven valid")
                 else:
                     print("This NUT policy rejects the supplied incorrect credentials")
@@ -319,6 +449,7 @@ def main():
                         except subprocess.TimeoutExpired:
                             child.kill()
                             child.wait(timeout=5)
+                discovery_driver.close()
 
 
 if __name__ == "__main__":

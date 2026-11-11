@@ -11,6 +11,7 @@ GitHub main 包含未发布的演示改进。Mooncakes 由维护者手动发布�
 
 - `LIST UPS`、`LIST VAR`、`GET VAR`，返回设备和变量结构。
 - `GET UPSDESC`、`GET DESC`、`GET TYPE`，读取描述及原始类型元信息。
+- `LIST RW` / `ENUM` / `RANGE`、`LIST CMD`、`GET CMDDESC`，只读发现变量选项、范围和命令。
 - 默认使用 STARTTLS，验证证书链及主机名，可用系统根证书或指定 PEM CA 文件。
 - 可选提交 `USERNAME` / `PASSWORD`，只在 TLS 验证成功后发送。
 - 每次查询独立连接，不共享协议流，不做连接池、自动重试或 TLS 降级。
@@ -23,12 +24,15 @@ GitHub main 包含未发布的演示改进。Mooncakes 由维护者手动发布�
 
 **验证范围：** 覆盖合成回环 NUT/TLS 服务，以及隔离 Ubuntu CI 中真实 NUT 2.8.4
 `upsd` + `dummy-ups` 程序与虚拟 UPS。测试将列表、变量值及 UPS 描述与官方 `upsc` 对照，
-将选定变量的描述和类型与只读 `upsrw -l` 对照，
+将选定变量的描述、类型、可写变量与只读 `upsrw -l` 对照，命令元信息与 `upscmd -l` 对照，
+枚举及多个区间另用连接到真实 upsd 的合成驱动状态对照，
 并让固定版本 PyNUT 在独立进程中对同一守护进程查询设备/变量列表。
 详见[对照范围及复现步骤](docs/comparison.md#中文)与
 [CI 结果](https://github.com/pangbit/moonnut/actions/workflows/ci.yml)。未验证物理 UPS 或生产部署；
 真实守护进程测试还覆盖验证 STARTTLS 后提交凭据、服务端对错误密码的行为、未知证书及错误主机名，
 采用当前安装的 NUT TLS 后端。CI 日志注明具体后端，不代表所有 NUT TLS 构建或硬件认证。
+
+变量候选值、独立范围及命令查询的 API、示例与验证边界见[只读能力发现](docs/discovery.md#中文)。
 
 ## 快速开始
 

@@ -25,6 +25,7 @@ Unknown tokens are retained. The library does not infer a number, parse a range,
 fetch enum choices or validate a value from these flags. `get_var` values remain
 strings. `RW` describes the server variable, not this client's capabilities or
 the caller's authorization. No write method is added.
+See [capability discovery](discovery.md) for explicit ENUM/RANGE and command reads.
 
 ```sh
 # Only use a server you are authorized to query. Verified TLS is the default.
@@ -63,7 +64,7 @@ on this illustrative example alone.
 Run the README's development commands. `moon test --target native` covers quoted
 and unavailable descriptions, multiple/omitted/unknown types, wrong identifiers,
 malformed shapes, errors, shared limits and exact status tokens.
-`scripts/cli_json_smoke.py` checks all six query operations on synthetic loopback
+`scripts/cli_json_smoke.py` checks all eleven query operations on synthetic loopback
 replies. In isolated Linux, `scripts/upsd_integration.py` uses real `upsd` and
 `dummy-ups` with a virtual UPS. `GET UPSDESC` is compared with official `upsc -L`;
 selected string/numeric variable descriptions and types are compared with
@@ -95,6 +96,7 @@ TLS、超时与响应限制，不增加写操作、后台轮询、硬件控制�
 NUT 协议规定省略类型时默认为数值。未知标记原样保留，不据此自动转换数值、解析范围、
 获取枚举候选项或校验值；`get_var` 始终返回字符串。`RW` 只是服务端变量的元信息，
 不代表本客户端可写，也不代表调用者获得写入授权。没有新增写接口。
+显式读取 ENUM/RANGE 及命令的接口见[只读能力发现](discovery.md#中文)。
 
 上方三条查询命令分别演示 UPS 描述、变量描述、变量类型及 JSON 输出，默认验证 TLS，
 仅可针对已授权的服务器执行。类型 JSON 含 `ups`、`name`、`types` 字段，示例值
@@ -113,7 +115,7 @@ NUT 协议规定省略类型时默认为数值。未知标记原样保留，不�
 
 执行 README 的开发命令。MoonBit 测试覆盖引号/不可用描述、多项/省略/未知类型、
 标识不匹配、畸形响应、错误与共用限制，以及状态精确匹配。CLI JSON 脚本使用合成
-回环响应覆盖全部六种查询操作。隔离 Linux 的真实 `upsd + dummy-ups` 测试仍使用
+回环响应覆盖全部十一种查询操作。隔离 Linux 的真实 `upsd + dummy-ups` 测试仍使用
 虚拟 UPS：将 `GET UPSDESC` 与官方 `upsc -L` 对照，将选定字符串/数值变量的描述和
 类型与官方 **`upsrw -l` 只读列表模式**对照，绝不使用 `-s`，不是写入测试。
 固定版本 PyNUT 没有这三个元信息查询的专用公开 API，不宣称对应覆盖。
