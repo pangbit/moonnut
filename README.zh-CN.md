@@ -58,6 +58,8 @@ moon run examples/query --target native -- ups.example.invalid 3493 --ca /path/t
 原始错误。不要把真实凭据写进命令、源码、示例、问题单或 Git；实际应用应使用适合其
 部署环境的凭据提供方式。
 
+三个完整使用场景、回环复现命令及预期结果见[只读使用场景](docs/scenarios.md#中文)。
+
 ## 三分钟演示
 
 1. 运行 `moon run examples/parse --target native`，离线解析包含多个状态词的响应，

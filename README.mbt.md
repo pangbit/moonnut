@@ -78,6 +78,9 @@ process environment. Do not put real credentials in commands, source, examples,
 issues or Git. The example does not print credentials or raw errors. Applications
 should use a credential provider appropriate to their deployment.
 
+For three complete consumer workflows, fixture commands and expected results, see
+[read-only use scenarios](docs/scenarios.md).
+
 ## Three-minute demonstration
 
 1. Run `moon run examples/parse --target native`. The offline example decodes a
