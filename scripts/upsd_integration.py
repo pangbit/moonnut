@@ -219,6 +219,7 @@ def configure_tls(folder, upsd):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--session-reference", type=Path, help="compiled loopback libupsclient session probe")
     parser.add_argument("--nut-reference", type=Path, help="compiled read-only libupsclient probe")
     parser.add_argument("--pynut", type=validate_pynut,
                         help="External official PyNUT v2.8.4 module (SHA-256 verified)")
@@ -264,8 +265,11 @@ def main():
         password = secrets.token_hex(24)
         (folder / "upsd.conf").write_text(
             f"LISTEN 127.0.0.1 {port}\nSTATEPATH {folder}\nMAXAGE 15\n" + tls_directives)
-        # No actions or instant commands are granted to this disposable account.
-        (folder / "upsd.users").write_text(f"[fixture]\n  password = {password}\n")
+        # Read account has no actions. Session account grants only LOGIN through
+        # upsmon secondary; no SET, FSD, PRIMARY or instant-command permission.
+        (folder / "upsd.users").write_text(
+            f"[fixture]\n  password = {password}\n"
+            f"[session-fixture]\n  password = {password}\n  upsmon secondary\n")
         for file in folder.iterdir():
             if file.is_file():
                 file.chmod(0o600)
@@ -450,6 +454,33 @@ def main():
                     print("PyNUT STARTTLS: not provided; TLS checks below exercise moonnut only")
                 else:
                     print("PyNUT comparison: not run (provide --pynut with the pinned external module)")
+                if args.session_reference:
+                    session_binary = ROOT / "_build/native/debug/build/examples/session_probe/session_probe.exe"
+                    expected_session = [
+                        "OFF", "ERR FEATURE-NOT-CONFIGURED", "ERR USERNAME-REQUIRED", "ERR USERNAME-REQUIRED",
+                        "OK", "ERR ALREADY-SET-USERNAME", "ERR PASSWORD-REQUIRED", "ERR PASSWORD-REQUIRED",
+                        "OK", "ERR ALREADY-SET-PASSWORD", "NUMLOGINS demo 0", "CLIENTS",
+                        "OK", "OK", "ON", "ERR UNKNOWN", "OK", "OFF", "ERR FEATURE-NOT-CONFIGURED", "OK",
+                        "ERR UNKNOWN-UPS", "OK", "ERR ALREADY-LOGGED-IN", "NUMLOGINS demo 1", "CLIENTS 127.0.0.1",
+                        "VALUE OL CHRG", "OFF", "OK", "OK", "OK", "NUMLOGINS demo 2",
+                        "CLIENTS 127.0.0.1 127.0.0.1", "OK Goodbye", "NUMLOGINS demo 1", "OK Goodbye",
+                        "OFF", "NUMLOGINS demo 0", "OK", "OK", "OK", "ON", "ERR ACCESS-DENIED", "VALUE OL CHRG", "OK Goodbye",
+                    ]
+                    session_env = dict(env, MOONNUT_USERNAME="session-fixture", MOONNUT_PASSWORD=password)
+                    for profile in ("plaintext", "trytls", "verified"):
+                        test_env = dict(session_env)
+                        if profile == "plaintext":
+                            test_env["MOONNUT_SESSION_PLAINTEXT"] = "1"
+                        official = run([str(args.session_reference), str(port)], test_env)
+                        if profile == "verified":
+                            test_env["MOONNUT_CA"] = str(cert)
+                        actual = run([str(session_binary), str(port)], test_env)
+                        assert official.returncode == actual.returncode == 0, (official.stdout, official.stderr, actual.stdout, actual.stderr)
+                        assert official.stdout.splitlines() == actual.stdout.splitlines() == expected_session, (profile, official.stdout, actual.stdout)
+                        assert json.loads(query("--num-logins", "demo", "--json"))["num_logins"] == 0
+                        print(f"PASS: persistent session {profile}: {len(expected_session)} outcomes match libupsclient (credential precedence, tracking, two LOGIN clients, duplicate addresses, LOGOUT cleanup, wrong password)")
+                else:
+                    print("Persistent session differential: not run (provide --session-reference)")
                 print("Synthetic device only: status=OL CHRG, charge=100%, runtime=600s")
                 auth_env = dict(env, MOONNUT_USERNAME="fixture", MOONNUT_PASSWORD=password)
                 trusted = [str(BINARY), "localhost", str(port), "--ca", str(cert)]

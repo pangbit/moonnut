@@ -3,7 +3,7 @@
 [English](README.mbt.md)
 
 面向 **MoonBit native** 的小型 NUT upsd 客户端，独立实现、个人维护、
-Apache-2.0 开源，当前 API 仍为只读。最终目标为完整 NUT 客户端能力，不实现服务端或 UPS 驱动。
+Apache-2.0 开源，提供读取与显式连接状态操作。最终目标为完整 NUT 客户端能力，不实现服务端或 UPS 驱动。
 详见[分阶段计划](docs/parity-plan.md)与[逐项验收矩阵](docs/parity-matrix.md)。库运行时不依赖 NUT 或 Python。
 
 GitHub main 包含未发布的演示改进。Mooncakes 由维护者手动发布，已有 0.1.0 版本保持不变。
@@ -17,13 +17,15 @@ GitHub main 包含未发布的演示改进。Mooncakes 由维护者手动发布�
 - 默认与官方 CLI 一致：尝试不验证证书的 TLS，STARTTLS 被拒绝时允许明文。
 - 显式验证 TLS 可用系统根证书或指定 PEM CA 文件。
 - 可选成对提交 `USERNAME` / `PASSWORD`，与官方客户端一样允许明文。
-- 每次查询独立连接，不共享协议流，不做连接池或自动重试。
+- `Client` 读取各自独立连接；显式 `Session` 可在同一连接执行所有读取。
+- 会话支持独立提交凭据、tracking、LOGIN/LOGOUT 及请求串行化，不自动重连或重试。
 - 分别设置连接和读取超时，整体截止时间可选；保留行长、响应字节和行数限制。
 - 支持 NUT 引号和转义规则，校验响应标识及列表边界。
 
-**不提供** `FSD`、`SET VAR`、`INSTCMD`、`LOGIN`、`PRIMARY`/`MASTER`、关机或
+**不提供** `FSD`、`SET VAR`、`INSTCMD`、`PRIMARY`/`MASTER`、关机或
 任意命令接口。它不是电源控制代理，也不是完整 RFC 9271 实现。
-认证会创建临时服务端会话状态；只查询你有权访问的服务器。
+显式 `Session::login` 会改变服务端消费者计数，不会自动发送或用来探测密码。
+凭据提交也创建临时会话状态；只访问已获授权的服务器。
 
 **验证范围：** 覆盖合成回环 NUT/TLS 服务，以及隔离 Ubuntu CI 中真实 NUT 2.8.4
 `upsd` + `dummy-ups` 程序与虚拟 UPS。测试将列表、变量值及 UPS 描述与官方 `upsc` 对照，
@@ -55,7 +57,8 @@ moon run examples/parse --target native
 原生异步应用中创建 `Client::new("ups.example.invalid")`，然后调用
 `list_ups()`、`list_vars("demo")`、`get_var("demo", "ups.status")`。
 变量值保留为字符串，例如 `OL CHRG` 不能当成单一枚举值。
-每次操作独立建立连接，可选按所选传输策略提交凭据，然后关闭连接，失败也会关闭。
+每次 `Client` 读取独立建立连接，按所选传输提交凭据并在结束/失败时关闭。
+`connect()` 或 `with_session()` 提供[持久会话与 tracking](docs/sessions.md)。
 
 ```sh
 # 仅针对已授权且明确指定的服务器
@@ -125,9 +128,9 @@ moon run examples/query --target native -- ups.example.invalid 3493 --get demo u
 | `username`、`password` | 无 | 成对提供，可能明文发送 |
 | `connect_timeout_ms` | `10000` | DNS 与连接截止时间 |
 | `read_timeout_ms` | `5000` | 每次传输读取，也用于 TLS 握手 |
-| `timeout_ms` | 无 | 可选的 DNS 至完整响应总截止时间 |
+| `timeout_ms` | 无 | Client 读取/回调总截止，或 Session 含锁等待的单次请求截止 |
 | `max_line_bytes` | `65536` | 一行 LF 分隔符之前的最大字节数 |
-| `max_response_bytes` | `4194304` | 含认证响应的协议总接收字节数 |
+| `max_response_bytes` | `4194304` | 每个响应的最大协议字节数；会话请求之间重置 |
 | `max_rows` | `4096` | 列表最大行数 |
 
 `TryTls` 与 NUT 2.8.4 官方 CLI 传输策略一致：不验证服务端身份，STARTTLS 被拒绝时

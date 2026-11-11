@@ -7,6 +7,7 @@ pub suberror NutError {
   Server(String)
   LimitExceeded(String)
   UnexpectedEof
+  ConnectionClosed
 }
 
 ///|

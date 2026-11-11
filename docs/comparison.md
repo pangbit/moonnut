@@ -37,6 +37,7 @@ but do not coerce values to numbers or silently repair parsing differences.
 | Unknown variable | Both fail | No direct GET API; not tested |
 | NUMLOGINS, VER, NETVER, PROTVER, HELP | Original read-only adapter calls installed libupsclient | HELP/VER public methods |
 | Empty LOGIN client list | `LIST CLIENT` matches `upsc -c` | `ListClients` |
+| Persistent sessions | 44 outcomes against installed libupsclient: credentials, tracking, two LOGIN consumers and LOGOUT cleanup | Not a PyNUT session differential |
 | STARTTLS, credentials, invalid CA/hostname | moonnut tested against actual upsd separately | No native STARTTLS API; not tested |
 
 Metadata comparisons use `ups.model` and `battery.charge`; they cover actual
@@ -65,7 +66,8 @@ curl -fsSL \
   -o "$reference_dir/PyNUT.py"
 moon build --target native
 cc -Wall -Wextra -Werror scripts/nut_reference.c -lupsclient -o "$reference_dir/nut-reference"
-python3 scripts/upsd_integration.py --pynut "$reference_dir/PyNUT.py" --nut-reference "$reference_dir/nut-reference"
+cc -Wall -Wextra -Werror scripts/nut_session_reference.c -lupsclient -o "$reference_dir/nut-session-reference"
+python3 scripts/upsd_integration.py --pynut "$reference_dir/PyNUT.py" --nut-reference "$reference_dir/nut-reference" --session-reference "$reference_dir/nut-session-reference"
 ```
 
 The script checks the reference hash **before execution**. Run as a regular user;
@@ -109,6 +111,7 @@ are a reproducible test baseline, not a recommendation for production updates.
 | 未知变量 | 均失败 | 不提供直接 GET API，不测此项 |
 | NUMLOGINS、VER、NETVER、PROTVER、HELP | 原创只读适配器调用已安装 libupsclient 对照 | HELP/VER 公共方法 |
 | 空 LOGIN 客户端列表 | 与 upsc -c 对照 | ListClients |
+| 持久会话 | 官方 C 库 44 项结果：凭据、tracking、两个 LOGIN 消费者及注销清理 | 本批未作 PyNUT 会话差分 |
 | STARTTLS、凭据、未知 CA/错误主机名 | 另行验证 moonnut 与真实 upsd | 不提供原生 STARTTLS API，不测此项 |
 
 元信息对照选择 `ups.model` 与 `battery.charge`，覆盖真实字符串/数值类型，
@@ -129,3 +132,6 @@ CI 记录版本、源码校验值、各项结果和 TLS 后端；固定包缺失
 不悄悄换新版本。这些版本用于可复现测试，不是生产环境更新建议。
 
 本批次同时断言真实 upsd 的空 ENUM/RANGE、不可用描述，以及 server.* 大写请求对应规范小写响应。计数与地址的非空会话生命周期、顺序及其他边界仍见矩阵，不能据本脚本声称完整兼容。
+
+Session validation is described in [sessions.md](sessions.md). Only the temporary LOGIN-only account is used; no SET VAR/INSTCMD/FSD is granted or sent. Different transport profiles and eventual cleanup are recorded separately.
+会话对照仅用临时 LOGIN 权限账号，不授权或发送设备控制；不同传输配置和最终清理语义分别记录，详见会话文档。

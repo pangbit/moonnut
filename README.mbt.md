@@ -3,7 +3,7 @@
 [简体中文](README.zh-CN.md)
 
 A small, independently implemented **NUT upsd client for MoonBit native**.
-Personally maintained, Apache-2.0 licensed, with a currently read-only API.
+Personally maintained, Apache-2.0 licensed, with read queries and explicit connection-state operations.
 The goal is full NUT client parity; server and UPS-driver implementations are excluded.
 See the [staged plan](docs/parity-plan.md) and [acceptance matrix](docs/parity-matrix.md).
 The library does not require a NUT executable or a Python runtime.
@@ -20,13 +20,15 @@ performed manually by the maintainer; the existing 0.1.0 release is unchanged.
 - NUT CLI default: try unverified STARTTLS, allow plaintext when STARTTLS is refused.
 - Explicit verified TLS using system roots or a PEM CA file.
 - Optional paired `USERNAME` / `PASSWORD`, including plaintext as in official clients.
-- One fresh connection per query; no shared stream, pooling or automatic retries.
+- Fresh connections for `Client` reads; explicit persistent `Session` with all the same reads.
+- Session credentials, tracking, LOGIN/LOGOUT and serialized queries; no automatic reconnect or retry.
 - Separate connection/read timeouts, optional whole-operation deadline, and bounded responses.
 - NUT-style quoting and escaping, strict reply identity and list boundary checks.
 
-There is **no** `FSD`, `SET VAR`, `INSTCMD`, `LOGIN`, `PRIMARY`/`MASTER`, shutdown,
+There is **no** `FSD`, `SET VAR`, `INSTCMD`, `PRIMARY`/`MASTER`, shutdown,
 or arbitrary-command API. This is not a power-control agent or a complete RFC 9271
-implementation. Authentication itself creates temporary server-side session state.
+implementation. Explicit `Session::login` changes the server consumer count; it
+is never sent automatically or used as a credential probe. Authentication itself creates temporary server-side session state.
 Only use it against servers you are authorized to query.
 
 **Verification boundary:** tests cover synthetic loopback NUT/TLS servers and
@@ -73,8 +75,9 @@ test "decode a synthetic NUT response" {
 In a native async application, create `Client::new("ups.example.invalid")`, then
 call `list_ups()`, `list_vars("demo")` or `get_var("demo", "ups.status")`. Values
 remain strings; a status like `OL CHRG` must not be treated as a single enum value.
-Each call opens a connection, optionally submits credentials using the selected transport,
-and closes the connection, including on failure.
+Each `Client` read opens a connection, optionally submits credentials using the selected
+transport, and closes it including on failure. Use `connect()` or `with_session()`
+for [persistent sessions and tracking](docs/sessions.md).
 
 ```sh
 # Only with authorization for the explicitly named target
@@ -154,9 +157,9 @@ See [server information queries](docs/server-info.md) for the six additional rea
 | `username`, `password` | absent | Paired credentials; may be sent in plaintext |
 | `connect_timeout_ms` | `10000` | DNS and connection deadline |
 | `read_timeout_ms` | `5000` | Each transport read; also bounds TLS handshake |
-| `timeout_ms` | absent | Optional deadline from DNS through the complete response |
+| `timeout_ms` | absent | Optional whole Client read/callback deadline, or per Session request including lock wait |
 | `max_line_bytes` | `65536` | Bytes before a line's LF delimiter |
-| `max_response_bytes` | `4194304` | Total received protocol bytes, including credential-exchange replies |
+| `max_response_bytes` | `4194304` | Maximum protocol bytes in one reply; reset between session requests |
 | `max_rows` | `4096` | Rows in a list response |
 
 `TryTls` matches the official NUT 2.8.4 CLI transport policy. It does not authenticate

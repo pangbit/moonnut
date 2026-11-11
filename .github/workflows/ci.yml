@@ -40,7 +40,8 @@ jobs:
           python3 scripts/tls_smoke.py
           python3 scripts/cli_json_smoke.py
           cc -Wall -Wextra -Werror scripts/nut_reference.c -lupsclient -o "$RUNNER_TEMP/moonnut-reference/nut-reference"
-          python3 scripts/upsd_integration.py --pynut "$RUNNER_TEMP/moonnut-reference/PyNUT.py" --nut-reference "$RUNNER_TEMP/moonnut-reference/nut-reference"
+          cc -Wall -Wextra -Werror scripts/nut_session_reference.c -lupsclient -o "$RUNNER_TEMP/moonnut-reference/nut-session-reference"
+          python3 scripts/upsd_integration.py --pynut "$RUNNER_TEMP/moonnut-reference/PyNUT.py" --nut-reference "$RUNNER_TEMP/moonnut-reference/nut-reference" --session-reference "$RUNNER_TEMP/moonnut-reference/nut-session-reference"
           moon info --target native
           moon fmt --check
           git diff --exit-code -- '*.mbti' '*.mbt' moon.mod moon.pkg

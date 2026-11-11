@@ -18,6 +18,7 @@ pub suberror NutError {
   Server(String)
   LimitExceeded(String)
   UnexpectedEof
+  ConnectionClosed
 }
 pub fn NutError::to_repr(Self) -> @debug.Repr
 
@@ -25,6 +26,7 @@ pub fn NutError::to_repr(Self) -> @debug.Repr
 pub struct Client {
   // private fields
 }
+pub async fn Client::connect(Self) -> Session
 pub async fn Client::get_command_description(Self, String, String) -> String
 pub async fn Client::get_help(Self) -> String
 pub async fn Client::get_net_version(Self) -> String
@@ -43,6 +45,7 @@ pub async fn Client::list_rw(Self, String) -> Array[Variable]
 pub async fn Client::list_ups(Self) -> Array[Ups]
 pub async fn Client::list_vars(Self, String) -> Array[Variable]
 pub fn Client::new(String, port? : Int32, security? : Security, username? : String, password? : String, timeout_ms? : Int32, connect_timeout_ms? : Int32, read_timeout_ms? : Int32, max_line_bytes? : Int32, max_rows? : Int32, max_response_bytes? : Int32) -> Self raise NutError
+pub async fn[T] Client::with_session(Self, async (Session) -> T) -> T
 
 pub(all) enum Security {
   TryTls
@@ -51,6 +54,49 @@ pub(all) enum Security {
   TlsCaFile(String)
   Plaintext
 }
+
+pub struct Session {
+  // private fields
+}
+pub fn Session::close(Self) -> Unit
+pub async fn Session::get_command_description(Self, String, String) -> String
+pub async fn Session::get_help(Self) -> String
+pub async fn Session::get_net_version(Self) -> String
+pub async fn Session::get_num_logins(Self, String) -> Int32
+pub async fn Session::get_protocol_version(Self) -> String
+pub async fn Session::get_server_version(Self) -> String
+pub async fn Session::get_tracking(Self) -> Bool
+pub async fn Session::get_tracking_status(Self, String) -> TrackingStatus
+pub async fn Session::get_ups_description(Self, String) -> String
+pub async fn Session::get_var(Self, String, String) -> String
+pub async fn Session::get_var_description(Self, String, String) -> String
+pub async fn Session::get_var_type(Self, String, String) -> Array[String]
+pub fn Session::is_closed(Self) -> Bool
+pub fn Session::is_tls(Self) -> Bool
+pub async fn Session::list_clients(Self, String) -> Array[String]
+pub async fn Session::list_commands(Self, String) -> Array[String]
+pub async fn Session::list_enum(Self, String, String) -> Array[String]
+pub async fn Session::list_range(Self, String, String) -> Array[VariableRange]
+pub async fn Session::list_rw(Self, String) -> Array[Variable]
+pub async fn Session::list_ups(Self) -> Array[Ups]
+pub async fn Session::list_vars(Self, String) -> Array[Variable]
+pub async fn Session::login(Self, String) -> Unit
+pub async fn Session::logout(Self) -> Unit
+pub async fn Session::set_password(Self, String) -> Unit
+pub async fn Session::set_tracking(Self, Bool) -> Unit
+pub async fn Session::set_username(Self, String) -> Unit
+
+#derive(Eq, @debug.Debug)
+pub(all) enum TrackingStatus {
+  Pending
+  Success
+  Unknown
+  InvalidArgument
+  Failed
+}
+pub fn TrackingStatus::equal(Self, Self) -> Bool
+pub fn TrackingStatus::not_equal(Self, Self) -> Bool
+pub fn TrackingStatus::to_repr(Self) -> @debug.Repr
 
 #derive(Eq, @debug.Debug)
 pub(all) struct Ups {

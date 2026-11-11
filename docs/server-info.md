@@ -2,7 +2,7 @@
 
 These six APIs complete the basic stateless read-command inventory alongside
 variable and capability discovery. They do not complete the NUT client target:
-tracking reads require persistent session work, and the acceptance matrix retains
+tracking reads now use [persistent sessions](sessions.md), and the acceptance matrix retains
 all remaining client gaps. No LOGIN, SET, instant command or FSD is sent.
 
 | API | Request | Return / 返回 |
@@ -44,14 +44,13 @@ IPv4/IPv6 client addresses and canonical response case. The isolated Linux scrip
 compares counts and server information using the installed official libupsclient,
 empty lists with `upsc -c`, and HELP/VER/client lists through PyNUT public methods.
 TLS fixtures compare default behavior with official upsc when installed.
-Nonzero counts tied to real LOGIN state remain for the session phase. No physical
+Nonzero counts and LOGIN cleanup are covered by the separate persistent-session comparison. No physical
 equipment is part of these tests. See [comparison](comparison.md) and
 [remaining acceptance items](parity-matrix.md).
 
 ## 中文
 
-这六项 API 补齐基本无状态读取命令，不代表完整客户端完成；tracking 读取仍依赖后续
-持久会话。调用不会发送 LOGIN、写变量、即时命令或 FSD。
+这六项 API 补齐基本无状态读取命令，不代表完整客户端完成；tracking 读取使用[显式持久会话](sessions.md)。调用不会发送 LOGIN、写变量、即时命令或 FSD。
 
 `NUMLOGINS` 统计向该 UPS 执行 LOGIN 的客户端，不是所有 TCP 连接。客户端地址列表
 保留顺序及重复项。VER/NETVER/PROTVER/HELP 返回去掉行结束符的原始字符串，保留空格、
@@ -65,5 +64,5 @@ equipment is part of these tests. See [comparison](comparison.md) and
 
 本地测试覆盖原文、别名/错误、计数解析、重复 IPv4/IPv6 地址及大小写。
 Linux 隔离脚本将计数和服务信息与官方 libupsclient 对照，空列表与 upsc -c 对照，
-HELP/VER/客户端列表与 PyNUT 对照。非零计数及 LOGIN 生命周期留在会话阶段验收。
+HELP/VER/客户端列表与 PyNUT 对照。非零计数及 LOGIN 生命周期由单独的会话对照覆盖。
 真实 upsd 配合虚拟设备只是协议参考，不涉及物理设备控制。

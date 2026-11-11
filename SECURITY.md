@@ -1,6 +1,6 @@
 # Security / 安全
 
-This is an early, personally maintained read-only client, not a safety-critical
+This is an early, personally maintained client in development, not a safety-critical
 power-management component. Use verified TLS and a minimally privileged NUT
 account. Do not expose an unauthenticated upsd port to untrusted networks.
 The default follows NUT CLI TRYSSL: unverified TLS, with plaintext (including
@@ -15,7 +15,7 @@ For a suspected vulnerability, contact the repository maintainer privately using
 the contact route on their public profile. Do not open a public issue containing
 secrets, private endpoints or an uncoordinated exploit. Use synthetic reproductions.
 
-这是早期的个人维护只读客户端，不是安全关键电源管理组件。使用验证过的 TLS 和
+这是早期的个人维护、开发中的客户端，不是安全关键电源管理组件。使用验证过的 TLS 和
 最小权限 NUT 账号，不要将未认证的 upsd 端口暴露给不可信网络。默认按官方 CLI TRYSSL：不验证证书，STARTTLS 被拒绝时回退明文，
 包括凭据。显式使用 Tls/TlsCaFile 或 --tls/--ca 可要求验证；握手失败不会回退。项目校验响应与资源上限，但不保证进程中秘密内存安全清零。
 最低 TLS 版本及算法策略继承底层库，当前未额外强制 TLS 1.2/1.3 最低版本。
@@ -30,3 +30,12 @@ moonnut does not issue LOGIN or power-management commands to probe credentials.
 
 NUT 可能先确认接收 USERNAME/PASSWORD，到需要授权的命令才验证；只读成功不证明
 密码正确。moonnut 不使用 LOGIN 或电源管理命令探测凭据。
+
+Explicit Session.login registers a power consumer and affects NUMLOGINS/LIST CLIENT.
+It requires authorization even though it does not itself send a UPS control command.
+Tracking toggles and credentials are connection state; they do not validate the
+password. Requests are never automatically replayed after connection failure.
+
+显式 Session.login 登记供电消费者，影响 NUMLOGINS/LIST CLIENT；即使没有发送 UPS
+控制命令，也必须获得目标服务器的授权。tracking 开关与凭据属于连接状态，不证明
+密码正确；连接失败后不会自动重放请求。测试账号仅授予 LOGIN，不授予设备控制。

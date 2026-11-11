@@ -5,7 +5,7 @@ Status: **Client scope confirmed; implementation in progress.**
 
 ## Goal and decisions / 目标与已确认决定
 
-moonnut 的目标是覆盖 NUT 客户端能力，并与固定参考的功能、默认值及可观察行为一致。当前提供 17 种业务读取，不是完整客户端。已有测试通过只证明对应场景，不能称为无缺失、无差异。
+moonnut 的目标是覆盖 NUT 客户端能力，并与固定参考的功能、默认值及可观察行为一致。当前提供 17 种基础读取与显式会话、tracking、LOGIN/LOGOUT，不是完整客户端。已有测试通过只证明对应场景，不能称为无缺失、无差异。
 
 - 用户确认「只对齐客户端能力」。实现目标包括客户端协议、库能力、查询/管理 CLI，以及客户端监控功能。**不实现 upsd、UPS 驱动或驱动服务管理器**；它们仅作为隔离参考和夹具。
 - 用户选择「默认行为也与官方 CLI 完全一致」。默认传输按 NUT 2.8.4 的 `TRYSSL`：尝试不验证证书的 TLS；STARTTLS 被拒绝时继续同连接明文；握手/IO 失败则终止。凭据允许明文发送。验证证书与强制 TLS 仍作为显式选项。
@@ -34,7 +34,7 @@ CI 记录包版本、架构、官方 CLI 二进制 SHA-256 和动态库/TLS 后�
 
 | Layer / 层次 | Scope / 范围 | Current gap / 当前缺口 |
 | --- | --- | --- |
-| Network client library | 所有 N01–N30 请求、响应/错误/状态机、传输；C/C++/PyNUT 业务能力的 MoonBit 映射 | 会话、tracking、写入/控制、低层 API 仍缺失 |
+| Network client library | 所有 N01–N30 请求、响应/错误/状态机、传输；C/C++/PyNUT 业务能力的 MoonBit 映射 | 持久会话与 tracking 已推进；写入/控制、低层 API 等仍缺失 |
 | Official client CLIs | upsc、upsrw、upscmd 的参数、默认、交互、输出/退出状态、等待语义 | `examples/query` 仍是演示，不是三个程序的替代品 |
 | Monitoring clients | upsmon、upslog、upssched、GUI/CGI 客户端功能，X09–X11/X14 | 未实现；逐程序/配置项继续展开，不能因当前为库而删除 |
 | Adjacent tools | X12/X13/X15 保留客户端相关扫描、配置及平台接入；非客户端后端按角色区分 | 需逐项映射；USB/物理驱动与服务端安装不纳入产品实现 |
@@ -54,16 +54,16 @@ NUT 链路：设备 ↔ 驱动 ↔ 驱动 socket 协议 ↔ upsd ↔ **TCP 客�
 | P5 — 其余客户端能力 | C/L 未完成行、监控/日志/调度、客户端平台集成 | 逐选项/配置/状态验收；系统权限动作使用替身或隔离镜像 |
 | P6 — 总体验收 | 固定参考 → 实现 → 同输入差分 → 平台证据 | 确认范围内没有未解决缺失/差异/跳过项，才可声称完整一致；发布由用户决定 |
 
-当前批次落实 P1/P2 的可独立部分：六项读取、TLS 默认、明文凭据、大小写响应匹配；默认连接 10 秒、每次传输读取 5 秒，整体截止时间改为显式选项。真实上游超时还涉及地址重试、DNS、TLS 后端和环境覆盖，B07/B12 **仍未关闭**。行/行数/总字节上限、UTF-8 策略与严格列表结束标识也仍是待对照差异。
+前一批次落实 P1/P2 的可独立部分：六项读取、TLS 默认、明文凭据、大小写响应匹配；默认连接 10 秒、每次传输读取 5 秒，整体截止时间改为显式选项。真实上游超时还涉及地址重试、DNS、TLS 后端和环境覆盖，B07/B12 **仍未关闭**。行/行数/总字节上限、UTF-8 策略与严格列表结束标识也仍是待对照差异。
 
-P3 采用最小持久连接抽象承载 tracking/LOGIN；P4 仅在隔离环境实现和验收。既有一次查询一连接的 API 可继续使用，但不能伪装为具有连接内状态的客户端。无需为本批次提前建设通用模拟框架。
+本批次 P3 采用显式 Session 承载 tracking/LOGIN：复用全部读取、独立凭据、注销/关闭、串行化与取消清理；增加仅 LOGIN 权限账号，与官方 C 库对照 44 项结果。真实有效 tracking ID 生命周期留在 P4。P4 仅在隔离环境实现和验收。既有一次查询一连接的 API 可继续使用，但不能伪装为具有连接内状态的客户端。无需为本批次提前建设通用模拟框架。
 
 ## Conflicts and remaining decisions / 冲突及后续裁决
 
 | ID | Evidence / 事实 | Treatment / 处理建议或决定 |
 | --- | --- | --- |
-| D01 | 大量会话/控制/CLI/监控能力尚缺 | 保留 M 状态，按 P3–P5 继续；不能以本批次完成宣称客户端完整 |
-| D02 | 安全默认与官方 TRYSSL 不同 | **用户已裁决官方默认优先**；本批次改为 TryTls；显式 Tls/TlsCaFile 仍验证证书 |
+| D01 | 控制/CLI/监控能力及部分会话边界尚缺 | 保留 M 状态，按 P3–P5 继续；不能以本批次完成宣称客户端完整 |
+| D02 | 安全默认与官方 TRYSSL 不同 | **用户已裁决官方默认优先**；前批次已改为 TryTls；显式 Tls/TlsCaFile 仍验证证书 |
 | D03 | C/C++/PyNUT 默认、容器和错误不完全相同 | 默认使用官方 C CLI profile；各库业务能力逐项映射；发生互斥语义时列出双方结果，不能同时声称完全等同 |
 | D04 | C ABI、C++ 对象与 MoonBit API 不同 | 当前推进 MoonBit 业务语义映射；ABI/源码可替换尚无证据，不冒充等价；如用户需要二进制替换需单列产物 |
 | D05 | query 演示的参数、脱敏 stdout 错误和 JSON 与官方 CLI 不同 | C01–C14 保留；后续提供相应 CLI 行为。产品版本/帮助身份应明确标识 moonnut，是否要求字面替换需在该阶段裁决 |
@@ -81,3 +81,5 @@ P3 采用最小持久连接抽象承载 tracking/LOGIN；P4 仅在隔离环境�
 源码核对、自测、直接官方差分、真实 upsd 虚拟设备对照分别标明。缺能力、缺环境或测试未执行都不是通过。复用现有脚本，仅针对已列需求和确定性差距增加测试，避免泛化框架和无差别参数组合。
 
 English: Current progress adds six read operations, CLI-compatible TLS negotiation, plaintext credential support, ASCII-insensitive echoed identifiers, and separate connection/read defaults. This does not close session, control, CLI replacement, parser limits, all timeout behavior, other client-library semantics, or monitoring/platform gaps. The matrix keeps these explicit. Compare equivalent states against pinned clients; retain raw evidence and distinguish synthetic tests from real-upsd differential tests. All control testing must remain disposable and isolated.
+
+English session progress: explicit connect/with_session, shared read methods, credential commands, tracking, LOGIN/LOGOUT and cancellation-safe serialization are implemented. The isolated session comparison adds 44 outcomes using official libupsclient; it does not exercise any UPS write or power action. Real operation tracking results, C++ empty-ID semantics, automatic reconnect and remaining CLI/platform behaviors stay open.

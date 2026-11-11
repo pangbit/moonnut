@@ -1,0 +1,10 @@
+import {
+  "moonbitlang/async",
+  "pangbit/moonnut",
+  "moonbitlang/core/env",
+  "moonbitlang/core/string",
+}
+
+pkgtype(kind: "executable")
+
+supported_targets = "native"
