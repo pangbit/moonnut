@@ -63,9 +63,20 @@ def main():
                                      {"name": "battery.charge", "value": "100"}])
     run_case(b'GET VAR "demo" "ups.status"\n', 'VAR demo ups.status "OL CHRG"\n',
              ["--get", "demo", "ups.status"], {"ups": "demo", "name": "ups.status", "value": "OL CHRG"})
+    run_case(b'GET UPSDESC "demo"\n', f'UPSDESC demo "{encoded}"\n',
+             ["--ups-desc", "demo"], {"ups": "demo", "description": description})
+    run_case(b'GET DESC "demo" "ups.status"\n', 'DESC demo ups.status "UPS status"\n',
+             ["--desc", "demo", "ups.status"],
+             {"ups": "demo", "name": "ups.status", "description": "UPS status"})
+    run_case(b'GET TYPE "demo" "ups.model"\n', 'TYPE demo ups.model RW STRING:32\n',
+             ["--type", "demo", "ups.model"],
+             {"ups": "demo", "name": "ups.model", "types": ["RW", "STRING:32"]})
+    run_case(b'GET TYPE "demo" "battery.charge"\n', 'TYPE demo battery.charge\n',
+             ["--type", "demo", "battery.charge"],
+             {"ups": "demo", "name": "battery.charge", "types": []})
     run_case(b"LIST UPS\n", "BEGIN LIST UPS\nEND LIST UPS\n", [], [])
     run_case(b"LIST UPS\n", "ERR ACCESS-DENIED\n", [], success=False)
-    print("CLI JSON smoke: escaped UTF-8, lists, scalar read, empty result and failure exit passed (5 cases)")
+    print("CLI JSON smoke: escaped UTF-8, lists, scalar read, metadata, empty result and failure exit passed (9 cases)")
 
 
 if __name__ == "__main__":

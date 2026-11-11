@@ -289,6 +289,57 @@ pub async fn Client::get_var(
 }
 
 ///|
+/// Read the configured UPS description (or the server's "Unavailable" text).
+pub async fn Client::get_ups_description(self : Client, ups : String) -> String {
+  let rows = self.query("GET UPSDESC " + quote_argument(ups), [], false)
+  match rows[0] {
+    ["UPSDESC", device, description] if device == ups => description
+    _ => raise Protocol("invalid UPS description response")
+  }
+}
+
+///|
+/// Read the server's variable description, which may be localized or unavailable.
+pub async fn Client::get_var_description(
+  self : Client,
+  ups : String,
+  name : String,
+) -> String {
+  let rows = self.query(
+    "GET DESC " + quote_argument(ups) + " " + quote_argument(name),
+    [],
+    false,
+  )
+  match rows[0] {
+    ["DESC", device, key, description] if device == ups && key == name =>
+      description
+    _ => raise Protocol("invalid variable description response")
+  }
+}
+
+///|
+/// Return all GET TYPE tokens in server order, without coercing variable values.
+/// Examples: ["RW", "STRING:32"], ["ENUM", "NUMBER"]. Unknown tokens are retained.
+/// An empty array is valid: NUT defines an omitted type as numeric.
+/// RW describes server metadata; it never grants this client write capability.
+pub async fn Client::get_var_type(
+  self : Client,
+  ups : String,
+  name : String,
+) -> Array[String] {
+  let rows = self.query(
+    "GET TYPE " + quote_argument(ups) + " " + quote_argument(name),
+    [],
+    false,
+  )
+  let row = rows[0]
+  if row.length() < 3 || row[0] != "TYPE" || row[1] != ups || row[2] != name {
+    raise Protocol("invalid variable type response")
+  }
+  row[3:].to_owned()
+}
+
+///|
 pub extend Ups with Eq::{equal, not_equal}
 
 ///|

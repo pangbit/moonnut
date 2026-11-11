@@ -12,6 +12,7 @@ performed manually by the maintainer; the existing 0.1.0 release is unchanged.
 ## Scope and safety
 
 - `LIST UPS`, `LIST VAR` and `GET VAR`, with typed device/variable results.
+- `GET UPSDESC`, `GET DESC` and `GET TYPE` for descriptions and raw type metadata.
 - Verified STARTTLS by default, using system roots or an explicit PEM CA file.
 - Optional `USERNAME` / `PASSWORD` submission **only after verified TLS**.
 - One fresh connection per query; no shared stream, pooling, automatic retries or downgrade.
@@ -25,7 +26,8 @@ Only use it against servers you are authorized to query.
 
 **Verification boundary:** tests cover synthetic loopback NUT/TLS servers and
 actual NUT 2.8.4 `upsd` + `dummy-ups` programs with a virtual UPS in isolated
-Ubuntu CI. The suite compares all three read operations with official `upsc`,
+Ubuntu CI. The suite compares lists, values and UPS descriptions with official `upsc`,
+selected variable descriptions/types with read-only `upsrw -l`,
 and UPS/variable lists with pinned PyNUT in a separate process on the same daemon.
 See the [comparison scope and reproduction steps](docs/comparison.md) and
 [CI results](https://github.com/pangbit/moonnut/actions/workflows/ci.yml).
@@ -80,6 +82,8 @@ should use a credential provider appropriate to their deployment.
 
 For three complete consumer workflows, fixture commands and expected results, see
 [read-only use scenarios](docs/scenarios.md).
+For metadata queries and an offline multi-flag status interpreter, see
+[descriptions, types and status](docs/metadata.md).
 
 ## Three-minute demonstration
 
@@ -96,6 +100,7 @@ For three complete consumer workflows, fixture commands and expected results, se
    The script starts the actual NUT `upsd` and `dummy-ups` programs with disposable
    configuration and a synthetic device, bound only to loopback. It compares
    moonnut's `LIST UPS`, `LIST VAR` and `GET VAR` results with official `upsc`,
+   checks descriptions/type metadata with `upsc -L` and read-only `upsrw -l`,
    then stops only its own child processes and removes its temporary files.
    It does not use the system's NUT configuration, a service manager, a physical
    device, or a persistent account. It checks both anonymous loopback plaintext
@@ -209,6 +214,7 @@ python3 scripts/reference_smoke.py /external/path/PyNUT.py
 python3 scripts/upsd_integration.py --pynut /external/path/PyNUT.py
 ```
 
+MoonBit tests also cover metadata replies and exact multi-word status flags.
 MoonBit tests cover parsing, injection rejection, fragmented/coalesced replies,
 error handling, identifier matching, empty lists, EOF, TLS refusal, timeout and
 resource bounds. Lifecycle tests verify server-observed EOF after timeout or

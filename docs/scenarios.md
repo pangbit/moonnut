@@ -20,10 +20,10 @@ python3 scripts/cli_json_smoke.py
 ```
 
 This portable, loopback-only check runs the actual query executable for all three
-operations. Expect exit status 0 and:
+original operations and three metadata queries. Expect exit status 0 and:
 
 ```text
-CLI JSON smoke: escaped UTF-8, lists, scalar read, empty result and failure exit passed (5 cases)
+CLI JSON smoke: escaped UTF-8, lists, scalar read, metadata, empty result and failure exit passed (9 cases)
 ```
 
 It verifies JSON shape, escaping, an empty discovery result and a denied query's
@@ -139,8 +139,8 @@ moon build --target native
 python3 scripts/cli_json_smoke.py
 ```
 
-此跨平台回环测试调用真正的查询程序，覆盖三种查询、JSON 转义、空列表和拒绝响应。
-预期退出码为 0，输出上文所列 `CLI JSON smoke: ... passed (5 cases)`。
+此跨平台回环测试调用真正的查询程序，覆盖原有三种查询、三种元信息查询、JSON 转义、空列表和拒绝响应。
+预期退出码为 0，输出上文所列 `CLI JSON smoke: ... passed (9 cases)`。
 它是合成协议服务，不是真实 NUT 守护进程。
 
 要取得独立协议证据，在隔离 Linux 环境中以普通用户运行一次：

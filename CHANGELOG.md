@@ -2,6 +2,14 @@
 
 ## Unreleased / 未发布
 
+- Add read-only UPS/variable descriptions and raw multi-token type metadata,
+  query CLI options, and an offline exact-token UPS status example.
+- Compare metadata with official upsc/upsrw in list-only mode on a virtual UPS;
+  cover malformed replies, omitted/unknown types and JSON output.
+- 新增只读 UPS/变量描述、保留多项标记的类型元信息、查询参数及精确匹配状态的离线示例。
+- 在虚拟 UPS 上使用官方 upsc/upsrw 只读模式对照元信息，验证畸形响应、
+  省略/未知类型及 JSON 输出。
+
 - Compare pinned PyNUT and upsc with moonnut on one isolated dummy-ups daemon,
   including full variable lists, direct single reads and failed queries.
 - 使用固定版本 PyNUT、upsc 与 moonnut 对照同一隔离 dummy-ups 守护进程，

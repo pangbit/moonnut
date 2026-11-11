@@ -3,12 +3,15 @@ priv enum Operation {
   Ups
   Vars(String)
   Var(String, String)
+  UpsDescription(String)
+  VarDescription(String, String)
+  VarType(String, String)
 }
 
 ///|
 fn usage() -> Unit {
   println(
-    "Usage: query HOST PORT [--plaintext | --ca FILE] [--vars UPS | --get UPS VARIABLE] [--json]",
+    "Usage: query HOST PORT [--plaintext | --ca FILE] [--vars UPS | --get UPS VARIABLE | --ups-desc UPS | --desc UPS VARIABLE | --type UPS VARIABLE] [--json]",
   )
   println("TLS with certificate and hostname verification is the default.")
 }
@@ -51,6 +54,21 @@ async fn main {
         }
         "--get" if !operation_set && index + 2 < args.length() => {
           operation = Var(args[index + 1], args[index + 2])
+          operation_set = true
+          index += 3
+        }
+        "--ups-desc" if !operation_set && index + 1 < args.length() => {
+          operation = UpsDescription(args[index + 1])
+          operation_set = true
+          index += 2
+        }
+        "--desc" if !operation_set && index + 2 < args.length() => {
+          operation = VarDescription(args[index + 1], args[index + 2])
+          operation_set = true
+          index += 3
+        }
+        "--type" if !operation_set && index + 2 < args.length() => {
+          operation = VarType(args[index + 1], args[index + 2])
           operation_set = true
           index += 3
         }
@@ -102,6 +120,49 @@ async fn main {
           for variable in variables {
             println(variable.name + "\t" + variable.value)
           }
+        }
+      }
+      UpsDescription(ups) => {
+        let description = client.get_ups_description(ups)
+        if json_output {
+          println(
+            @json.Json::object({
+              "ups": @json.Json::string(ups),
+              "description": @json.Json::string(description),
+            }).stringify(),
+          )
+        } else {
+          println(description)
+        }
+      }
+      VarDescription(ups, name) => {
+        let description = client.get_var_description(ups, name)
+        if json_output {
+          println(
+            @json.Json::object({
+              "ups": @json.Json::string(ups),
+              "name": @json.Json::string(name),
+              "description": @json.Json::string(description),
+            }).stringify(),
+          )
+        } else {
+          println(description)
+        }
+      }
+      VarType(ups, name) => {
+        let types = client.get_var_type(ups, name)
+        if json_output {
+          println(
+            @json.Json::object({
+              "ups": @json.Json::string(ups),
+              "name": @json.Json::string(name),
+              "types": @json.Json::array(
+                types.map(value => @json.Json::string(value)),
+              ),
+            }).stringify(),
+          )
+        } else {
+          println(types.join(" "))
         }
       }
       Var(ups, name) => {

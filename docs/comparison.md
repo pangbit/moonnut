@@ -22,11 +22,17 @@ but do not coerce values to numbers or silently repair parsing differences.
 | Case | moonnut and upsc | PyNUT |
 | --- | --- | --- |
 | UPS names and descriptions | Direct list comparison (`upsc -L`) | `GetUPSList`, same results |
+| UPS description | `GET UPSDESC` matches `upsc -L` | No dedicated GET UPSDESC API |
+| String/numeric metadata | `GET DESC` / `GET TYPE` match read-only `upsrw -l` | No dedicated DESC/TYPE APIs |
 | Complete variable map | Direct list comparison | `GetUPSVars`, same results |
 | Four selected scalar values | Direct `GET VAR` comparison | Same values via the full map; no direct GET API |
 | Unknown UPS | Both fail | `GetUPSVars` raises `ERR UNKNOWN-UPS` |
 | Unknown variable | Both fail | No direct GET API; not tested |
 | STARTTLS, credentials, invalid CA/hostname | moonnut tested against actual upsd separately | No native STARTTLS API; not tested |
+
+Metadata comparisons use `ups.model` and `battery.charge`; they cover actual
+string/numeric type flags, not every ENUM/RANGE combination. `upsrw` is called
+only with `-l`, without write options or credentials. See [metadata examples](metadata.md).
 
 The CLI redacts errors, so failed-query checks assert failure rather than equal
 exception classes or error text. TLS checks are **not** a three-client security
@@ -75,11 +81,17 @@ are a reproducible test baseline, not a recommendation for production updates.
 | 场景 | moonnut 与 upsc | PyNUT |
 | --- | --- | --- |
 | UPS 名称及描述 | 直接列表对照，upsc 使用 `-L` | `GetUPSList` 对照相同结果 |
+| UPS 描述 | `GET UPSDESC` 与 `upsc -L` 一致 | 无专用 GET UPSDESC API |
+| 字符串/数值元信息 | `GET DESC` / `GET TYPE` 与只读 `upsrw -l` 一致 | 无专用 DESC/TYPE API |
 | 完整变量表 | 直接列表对照 | `GetUPSVars` 对照相同结果 |
 | 四个选定变量 | 直接 `GET VAR` 对照 | 从完整列表核对值，不提供直接 GET API |
 | 未知 UPS | 均失败 | `GetUPSVars` 抛出 `ERR UNKNOWN-UPS` |
 | 未知变量 | 均失败 | 不提供直接 GET API，不测此项 |
 | STARTTLS、凭据、未知 CA/错误主机名 | 另行验证 moonnut 与真实 upsd | 不提供原生 STARTTLS API，不测此项 |
+
+元信息对照选择 `ups.model` 与 `battery.charge`，覆盖真实字符串/数值类型，
+不代表所有 ENUM/RANGE 组合。`upsrw` 仅使用 `-l`，不传写入参数或凭据。
+示例与语义说明见[描述、类型与状态](metadata.md#中文)。
 
 CLI 主动脱敏错误，因此比较“失败”结果而非异常类型或报错文本等价。TLS 检查不是
 三方安全性比较。NUT 即使收到错误密码也可能允许匿名读取，读成功不能证明凭据有效。

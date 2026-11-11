@@ -10,6 +10,7 @@ GitHub main 包含未发布的演示改进。Mooncakes 由维护者手动发布�
 ## 功能与安全边界
 
 - `LIST UPS`、`LIST VAR`、`GET VAR`，返回设备和变量结构。
+- `GET UPSDESC`、`GET DESC`、`GET TYPE`，读取描述及原始类型元信息。
 - 默认使用 STARTTLS，验证证书链及主机名，可用系统根证书或指定 PEM CA 文件。
 - 可选提交 `USERNAME` / `PASSWORD`，只在 TLS 验证成功后发送。
 - 每次查询独立连接，不共享协议流，不做连接池、自动重试或 TLS 降级。
@@ -21,7 +22,8 @@ GitHub main 包含未发布的演示改进。Mooncakes 由维护者手动发布�
 认证会创建临时服务端会话状态；只查询你有权访问的服务器。
 
 **验证范围：** 覆盖合成回环 NUT/TLS 服务，以及隔离 Ubuntu CI 中真实 NUT 2.8.4
-`upsd` + `dummy-ups` 程序与虚拟 UPS。测试将三种只读操作与官方 `upsc` 对照，
+`upsd` + `dummy-ups` 程序与虚拟 UPS。测试将列表、变量值及 UPS 描述与官方 `upsc` 对照，
+将选定变量的描述和类型与只读 `upsrw -l` 对照，
 并让固定版本 PyNUT 在独立进程中对同一守护进程查询设备/变量列表。
 详见[对照范围及复现步骤](docs/comparison.md#中文)与
 [CI 结果](https://github.com/pangbit/moonnut/actions/workflows/ci.yml)。未验证物理 UPS 或生产部署；
@@ -59,6 +61,7 @@ moon run examples/query --target native -- ups.example.invalid 3493 --ca /path/t
 部署环境的凭据提供方式。
 
 三个完整使用场景、回环复现命令及预期结果见[只读使用场景](docs/scenarios.md#中文)。
+元信息查询与离线多标记状态解释示例见[描述、类型与状态](docs/metadata.md#中文)。
 
 ## 三分钟演示
 
@@ -73,7 +76,8 @@ moon run examples/query --target native -- ups.example.invalid 3493 --ca /path/t
 
    脚本使用临时配置启动真实 NUT `upsd` 与 `dummy-ups` 程序，创建合成设备，
    仅绑定回环地址；将 moonnut 的 `LIST UPS`、`LIST VAR`、`GET VAR` 与官方 `upsc`
-   对照。结束后只停止自己创建的子进程并清理临时文件，不使用系统 NUT 配置、
+   对照，并使用 `upsc -L`、只读 `upsrw -l` 核对描述和类型元信息。
+   结束后只停止自己创建的子进程并清理临时文件，不使用系统 NUT 配置、
    服务管理器、物理设备或长期账号。它同时验证匿名回环明文与使用临时只读账号的
    STARTTLS，观察服务端对错误密码的行为，并拒绝未知 CA 及错误主机名。需要 OpenSSL；NSS 后端构建
    还需 `libnss3-tools`。密钥和账号均为临时测试产物。

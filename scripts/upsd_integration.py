@@ -141,9 +141,10 @@ def main():
     upsd = locate("upsd", ("/usr/sbin/upsd",))
     driver = locate("dummy-ups", ("/lib/nut/dummy-ups", "/usr/lib/nut/dummy-ups", "/usr/libexec/nut/dummy-ups"))
     upsc = locate("upsc")
+    upsrw = locate("upsrw")
     env = {k: v for k, v in os.environ.items()
            if not k.startswith(("MOONNUT_", "NUT_"))}
-    for program in (upsd, driver, upsc):
+    for program in (upsd, driver, upsc, upsrw):
         version = run([program, "-V"], env)
         assert version.returncode == 0, version.stderr
         banner = (version.stdout + version.stderr).strip().splitlines()[0]
@@ -225,11 +226,42 @@ def main():
                     assert scalar.returncode == 0 and scalar.stdout.rstrip("\n") == expected, name
                     assert json.loads(query("--get", "demo", name, "--json"))["value"] == expected, name
                 print(f"PASS: LIST UPS ({len(devices)} device), complete LIST VAR ({len(variables)} values) and 4 direct GET VAR reads match upsc")
+                ups_description = json.loads(query("--ups-desc", "demo", "--json"))
+                assert ups_description == {"ups": "demo", "description": devices["demo"]}
+                # Official upsrw in list-only mode reads DESC/TYPE. Never use -s.
+                # Compare known string/numeric fixture fields, not its full UI.
+                rw = run([upsrw, "-l", "demo@" + endpoint], env)
+                assert rw.returncode == 0, rw.stderr
+                sections = {}
+                current = None
+                for line in rw.stdout.splitlines():
+                    if line.startswith("[") and line.endswith("]"):
+                        current = line[1:-1]
+                        sections[current] = []
+                    elif current and line:
+                        sections[current].append(line)
+                for name, kind in (("ups.model", "STRING"), ("battery.charge", "NUMBER")):
+                    section = sections[name]
+                    description = json.loads(query("--desc", "demo", name, "--json"))
+                    assert description == {"ups": "demo", "name": name, "description": section[0]}
+                    metadata = json.loads(query("--type", "demo", name, "--json"))
+                    assert metadata["ups"] == "demo" and metadata["name"] == name
+                    types = metadata["types"]
+                    assert "RW" in types and "Type: " + kind in section
+                    if kind == "STRING":
+                        length = next(line.removeprefix("Maximum length: ") for line in section
+                                      if line.startswith("Maximum length: "))
+                        assert set(types) == {"RW", "STRING:" + length}
+                    else:
+                        assert set(types) == {"RW", "NUMBER"}
+                print("PASS: GET UPSDESC matches upsc -L; GET DESC/TYPE match read-only upsrw -l for string and numeric fixtures")
                 # The public CLI intentionally redacts errors. Compare failure,
                 # not exception types/messages; inspect known reference errors.
                 for options, reference_args, message in (
                     (("--vars", "missing"), ["missing@" + endpoint], "Unknown UPS"),
                     (("--get", "demo", "missing.variable"), ["demo@" + endpoint, "missing.variable"], "Variable not supported"),
+                    (("--ups-desc", "missing"), ["missing@" + endpoint], "Unknown UPS"),
+                    (("--type", "demo", "missing.variable"), ["demo@" + endpoint, "missing.variable"], "Variable not supported"),
                 ):
                     failed = run([str(BINARY), "127.0.0.1", str(port), "--plaintext", *options], env)
                     baseline = run([upsc, *reference_args], env)
@@ -243,6 +275,7 @@ def main():
                     assert python_reference["unknown_ups"] == "ERR UNKNOWN-UPS"
                     print("PASS: PyNUT matches LIST UPS, complete LIST VAR and unknown-UPS failure on the same daemon")
                     print("PyNUT GET VAR: not provided; selected values agree via GetUPSVars, not a direct GET")
+                    print("PyNUT GET UPSDESC/DESC/TYPE: no dedicated public APIs; metadata uses upsc/upsrw")
                     print("PyNUT STARTTLS: not provided; TLS checks below exercise moonnut only")
                 else:
                     print("PyNUT comparison: not run (provide --pynut with the pinned external module)")
