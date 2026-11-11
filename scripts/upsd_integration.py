@@ -250,7 +250,7 @@ def main():
                    NSS_DEFAULT_DB_TYPE="sql")
         (folder / "ups.conf").write_text(
             f"statepath = {folder}\n[demo]\n  driver = dummy-ups\n"
-            f"  port = {folder / 'demo.dev'}\n  mode = dummy-once\n"
+            f"  port = {folder / 'demo.dev'}\n  mode = dummy-once\n  pollinterval = 3600\n"
             '  desc = "Synthetic demo UPS"\n'
             '[metadata]\n  driver = moonnut-fixture\n  port = unused\n'
             '  desc = "Synthetic discovery state"\n')
@@ -286,7 +286,10 @@ def main():
                     if result.returncode == 0:
                         values = dict(line.split(": ", 1) for line in result.stdout.splitlines()
                                       if ": " in line)
-                        if all(k in values for k in EXPECTED):
+                        # Even dummy-once changes driver.state on each poll.
+                        # Wait for quiet, then the long fixture-only poll interval
+                        # keeps sequential full-map comparisons deterministic.
+                        if all(k in values for k in EXPECTED) and values.get("driver.state") == "quiet":
                             metadata_ready = run([upsc, f"metadata@127.0.0.1:{port}"], env)
                             if metadata_ready.returncode == 0:
                                 metadata_values = upsc_mapping(metadata_ready)
@@ -314,6 +317,8 @@ def main():
                              for item in json.loads(query("--vars", "demo", "--json"))}
                 reference = upsc_mapping(run([upsc, "demo@" + endpoint], env))
                 assert variables == reference, "complete LIST VAR results differ"
+                assert variables["driver.state"] == "quiet"
+                assert variables["driver.parameter.pollinterval"] == "3600"
                 for name, expected in EXPECTED.items():
                     assert variables.get(name) == reference[name] == expected, (name, variables.get(name), reference[name], expected)
                     scalar = run([upsc, "demo@" + endpoint, name], env)
@@ -401,7 +406,11 @@ def main():
                 if args.pynut:
                     python_reference = pynut_results(args.pynut, port, env)
                     assert python_reference["ups"] == devices
-                    assert python_reference["variables"] == variables
+                    assert python_reference["variables"] == variables, {
+                        name: (variables.get(name), python_reference["variables"].get(name))
+                        for name in variables.keys() | python_reference["variables"].keys()
+                        if variables.get(name) != python_reference["variables"].get(name)
+                    }
                     assert python_reference["unknown_ups"] == "ERR UNKNOWN-UPS"
                     print("PASS: PyNUT matches LIST UPS, complete LIST VAR and unknown-UPS failure on the same daemon")
                     print("PyNUT GET VAR: not provided; selected values agree via GetUPSVars, not a direct GET")

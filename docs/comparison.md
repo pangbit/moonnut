@@ -16,6 +16,10 @@ The library stays independent of NUT executables and Python; only tests need the
 
 The same temporary `upsd` + `dummy-ups` instance serves all clients on loopback.
 Its static fixture has a multi-word model/status and numeric-looking string values.
+Even `dummy-once` updates `driver.state` during each driver poll. The disposable
+fixture uses a 3600-second poll interval and waits for `quiet` before comparing
+full maps, so the sequential reads do not straddle that state change. No fields
+are excluded from equality checks; ordinary multi-query reads are not atomic.
 Compare dictionaries without relying on row order; decode PyNUT bytes as UTF-8,
 but do not coerce values to numbers or silently repair parsing differences.
 
@@ -81,6 +85,9 @@ are a reproducible test baseline, not a recommendation for production updates.
 与 async 版本，以及官方 NUT v2.8.3 中的 PyNUT 1.8.0。PyNUT 的完整提交与 SHA-256
 列于上文，执行前必须核验。所有客户端读取同一个仅绑定回环地址的临时
 `upsd + dummy-ups`，数据为静态合成设备：包含多词型号/状态和数字字符串。
+即使使用 `dummy-once`，驱动每轮也会更新 `driver.state`。临时夹具将轮询间隔设为
+3600 秒，并等待 `quiet` 后再比较完整变量表，避免顺序查询跨越状态变化；不排除
+任何字段。普通的多次查询不保证原子快照。
 比较不依赖行顺序，仅把 PyNUT bytes 解码为 UTF-8，不把数值字符串转为数字或掩盖解析差异。
 
 | 场景 | moonnut 与官方 NUT 客户端 | PyNUT |
