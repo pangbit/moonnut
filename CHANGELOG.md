@@ -2,6 +2,12 @@
 
 ## Unreleased / 未发布
 
+- Add scoped LIST streaming with incremental rows and explicit failure cleanup.
+  Align upsc partial output, extra fields and selected list-error exit behavior.
+  Local 53 native tests and 28 streaming cases pass; official Linux comparison pending.
+- 新增作用域 LIST 流式读取、部分结果和异常清理；推进 upsc 额外字段及部分失败退出语义。
+  本地 53 项原生和 28 项流式场景通过，官方 Linux 对照待执行；完整一致性仍未完成。
+
 - Add native upsc for UPS/variable/consumer queries, common argument/error behavior
   and connection timeout options. Add four local transport checks and a 40-case
   isolated official CLI differential; all 40 cases and prior regressions pass pinned Linux CI.

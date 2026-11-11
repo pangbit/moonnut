@@ -150,30 +150,14 @@ async fn query_execute(opt : QueryOptions) -> Unit {
       }
     }
   })
-  if opt.list {
-    for device in session.list_ups() {
-      println(
-        if opt.verbose {
-          device.name + ": " + device.description
-        } else {
-          device.name
-        },
-      )
-    }
-  } else if opt.clients {
-    for address in session.list_clients(ups) {
-      println(address)
-    }
-  } else if opt.positionals.length() > 1 {
+  if opt.list || opt.clients || opt.positionals.length() == 1 {
+    query_list(session, opt, ups)
+  } else {
     let name = opt.positionals[1]
     if !name.contains(".") {
       raise CliFailure("Error: old-style variable names are not supported")
     }
     println(session.get_var(ups, name))
-  } else {
-    for variable in session.list_vars(ups) {
-      println(variable.name + ": " + variable.value)
-    }
   }
 }
 
@@ -203,5 +187,53 @@ pub async fn run_query() -> Unit {
   }
   if exit_code != 0 {
     @env.exit(exit_code)
+  }
+}
+
+///|
+async fn query_list(
+  session : @moonnut.Session,
+  opt : QueryOptions,
+  ups : String,
+) -> Unit {
+  let query = if opt.list {
+    ["UPS"]
+  } else if opt.clients {
+    ["CLIENT", ups]
+  } else {
+    ["VAR", ups]
+  }
+  let required = if !opt.list && !opt.clients { 4 } else { 3 }
+  session.with_list(query, reader => {
+    while true {
+      // upsc ignores list_next failures, but treats short delivered rows as fatal.
+      // Resource caps are a moonnut extension and remain explicit failures.
+      let row = reader.next() catch {
+        @moonnut.NutError::LimitExceeded(_) as error => raise error
+        _ => None
+      }
+      guard row is Some(row) else { break }
+      if row.length() < required {
+        raise CliFailure(
+          "Error: insufficient data (got " +
+          row.length().to_string() +
+          " args, need at least " +
+          required.to_string() +
+          ")",
+        )
+      }
+      if opt.list {
+        println(if opt.verbose { row[1] + ": " + row[2] } else { row[1] })
+      } else if opt.clients {
+        println(row[2])
+      } else {
+        println(row[2] + ": " + row[3])
+      }
+    }
+  }) catch {
+    @moonnut.NutError::Protocol(_) => raise CliFailure("Error: Protocol error")
+    @moonnut.NutError::UnexpectedEof =>
+      raise CliFailure("Error: Server disconnected")
+    error => raise error
   }
 }

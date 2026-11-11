@@ -45,6 +45,7 @@ jobs:
           cc -Wall -Wextra -Werror scripts/nut_control_reference.c -lupsclient -o "$RUNNER_TEMP/moonnut-reference/nut-control-reference"
           python3 scripts/control_integration.py --reference "$RUNNER_TEMP/moonnut-reference/nut-control-reference" --evidence-dir "$RUNNER_TEMP/moonnut-control-evidence"
           python3 scripts/admin_cli_integration.py --evidence-dir "$RUNNER_TEMP/moonnut-control-evidence"
+          python3 scripts/list_stream_integration.py --reference /usr/bin/upsc --evidence-dir "$RUNNER_TEMP/moonnut-control-evidence"
           moon info --target native
           moon fmt --check
           git diff --exit-code -- '*.mbti' '*.mbt' moon.mod moon.pkg

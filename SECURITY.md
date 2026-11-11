@@ -70,3 +70,11 @@ cmd/upsc. Read-only queries can expose operational information on an untrusted l
 
 原生 upsc 不提交凭据或 LOGIN，但仍默认不验证 TLS 并允许明文回退，链路不可信时读取
 结果可能泄露运行信息。验证 TLS 通过库或 examples/query 选择，cmd/upsc 没有该参数。
+
+Like the pinned official upsc, the native upsc may exit 0 after a mid-list error
+with only partial output. This does not prove a complete snapshot. Use the
+library's scoped list reader and handle its errors when completeness matters.
+moonnut still fails explicitly on configured resource limits. See [streaming](docs/streaming.md).
+
+与固定官方 upsc 一样，原生 upsc 可在列表中途出错后仅输出部分内容并退出 0，不能据此
+认定快照完整。需要完整性判断时使用库的作用域流式接口并处理异常；资源上限仍显式失败。

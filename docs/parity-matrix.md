@@ -2,7 +2,7 @@
 
 **Client scope confirmed / 客户端范围已确认。** 固定基线、用户决定与阶段见 [parity-plan.md](parity-plan.md)。客户端实现和隔离对照继续进行；服务器/UPS 驱动实现范围外。
 
-NUT 固定源码：`541c2ecf0b2ec33dadb9f40b16acbe39042bd103` (2.8.4)。moonnut 审计起点：`709b5deb77afb33fbee940d2f5fa8e9a2bb1427c`；前批次完成选定读取、默认传输、会话与控制对照；本批次增加原生 upsc 查询 CLI。
+NUT 固定源码：`541c2ecf0b2ec33dadb9f40b16acbe39042bd103` (2.8.4)。moonnut 审计起点：`709b5deb77afb33fbee940d2f5fa8e9a2bb1427c`；前批次完成选定读取、默认传输、会话与控制对照；本批次推进作用域 LIST 迭代和 upsc 部分输出行为。
 
 状态：**E** = 已实现且有选定场景证据，仍待完整验收；**M** = 缺失；**D** = 已知设计/接口差异；**U** = 未直接对照；**S** = 客户端相关部分待展开；**O** = 用户已确认范围外。`E` 不等于整行已通过。来源为文件级固定源码，最终用例须进一步记录行号/分支及运行证据。
 
@@ -49,7 +49,7 @@ N01–N30 覆盖固定版本顶层命令及 GET/LIST/SET 分支；GET TRACKING �
 | --- | --- | --- | --- | --- |
 | B01 | 分词/编码/转义 | E/U/D | 与 parseconf、各客户端编码器比较引号、反斜线、#、=、空串、制表符、非 ASCII、非法字节；明确哪些差异由目标决定 | P1；[parseconf][parse] |
 | B02 | 大小写、行结束与形状 | E/U/D；响应标识已按 ASCII 忽略大小写 | 命令/UPS/变量/返回标识大小写、LF/CRLF、分段/粘包、多余 token、缺 END、重复记录；不得仅测试本库严格拒绝 | P1；[C 实现][cimpl] |
-| B03 | 流式列表/部分结果 | D/U | libupsclient 迭代返回与当前整表返回的区别、EOF/错误时可见的部分结果、取消后的连接状态 | P1/P2；[C API][capi] |
+| B03 | 流式列表/部分结果 | E/U/D；with_list/next 已实现；53 项原生和 28 个本地场景通过，官方差分待执行 | 通用流式与原有类型化整表接口的区别、EOF/错误时可见的部分结果、取消后的连接状态 | P1/P2；[C API][capi] |
 | B04 | 连接与会话生命周期 | E/U/D；显式会话/关闭、串行化、请求与排队取消；不自动重连，其他生命周期仍待验 | 连接/断开/显式重连、凭据与登录状态、跟踪状态、多个查询；并发和恢复是否属目标 API | P3；[C++ API][cpp] |
 | B05 | TLS 默认与策略选项 | E/U/D；用户确认官方默认，本批次落实 TRYSSL/明文凭据 | TRYSSL/REQSSL/CERTVERIF、明文模式/凭据、信任源、每主机策略、客户端证书、握手拒绝；NSS/OpenSSL/无 TLS 分 profile | P1/P3；[C API][capi] |
 | B06 | 地址解析与连接目标 | M/U | ups@host:port、默认 localhost:3493、IPv6 方括号、IPv4/IPv6 选择、DNS/连接失败 | P2；[C 实现][cimpl] |
@@ -71,7 +71,7 @@ B08 不能只断言“均失败”。使用固定 [server/neterr.h][errors] 中�
 | ID | 程序与操作 | 当前状态 | 验收内容 | 来源/阶段 |
 | --- | --- | --- | --- | --- |
 | C01 | upsc -l / -L [host] | E/U/D；原生 CLI 双设备精确输出已对照；默认地址等未完 | 名称/名称+描述、默认地址、端口、精确格式 | [upsc][upsc]；P2 |
-| C02 | upsc ups [variable] | E/U/D；原生 CLI 全表/单值/server.* 与常见错误精确输出已对照；流式/完整错误未完 | 全变量/单值、server.*、地址解析、错误/输出 | [upsc][upsc]；P1/P2 |
+| C02 | upsc ups [variable] | E/U/D；原生 CLI 全表/单值/server.* 与常见错误精确输出已对照；选定流式已实现待对照，完整错误未完 | 全变量/单值、server.*、地址解析、错误/输出 | [upsc][upsc]；P1/P2 |
 | C03 | upsc -c ups | E/U/D；原生 -c 零/一/二个消费者、重复地址及注销后空列表已对照；完整边界未完 | 登录客户端列表和输出 | [upsc][upsc]；P2/P3 |
 | C04 | upsc -h / -V / -W | E/U/D；零/小数/非法超时及环境、常用地址/错误已对照；帮助身份/完整诊断/精度等未完 | 帮助、版本、连接超时、合法/非法参数及环境覆盖 | [upsc][upsc]；P2 |
 | C05 | upsrw 默认 / -l | E/U/D；原生 upsrw 默认/-l 有序列表文本已通过[管理 CLI 对照][admin-ci] | 完整变量、描述、类型、长度、选项、SELECTED 标记、当前值；不能只比较集合 | [upsrw][upsrw]；P1/P2 |
@@ -99,7 +99,7 @@ JSON 是 moonnut 的额外输出模式，不是以上官方 CLI 的等价证据�
 | L02 | upscli_connect / upscli_tryconnect / upscli_disconnect | E/U/D；connect/with_session/close/logout 已映射；C 断开及重连语义仍有差异 | 显式连接生命周期与超时，B04–B07 |
 | L03 | upscli_add_host_cert | M | 每主机证书名、校验、强制 TLS |
 | L04 | upscli_get | E/D | 通用 GET、结果形状/所有字段，N03–N06/N11/N12/N24/N25 |
-| L05 | upscli_list_start / upscli_list_next | D | 所有 LIST 与迭代、结束/错误、部分结果 |
+| L05 | upscli_list_start / upscli_list_next | E/U/D；作用域迭代映射已实现，资源上限/异常后复用/完整 API 仍不同 | 所有 LIST 与迭代、结束/错误、部分结果 |
 | L06 | upscli_sendline / upscli_sendline_timeout | E/M/D | request_line 已提供受限单行交换；分离发送、写超时及流式入口仍缺 |
 | L07 | upscli_readline / upscli_readline_timeout | E/M/D | request_line 返回原始回复并可指定读超时；独立读取、完整缓冲/超时/EOF 映射仍缺 |
 | L08 | upscli_splitname / upscli_splitaddr | E/M/U | CLI 有基础地址解析；对应库公开 API、完整语法/错误对照仍缺 |
@@ -168,6 +168,8 @@ X01–X08 为 **O**：用户明确不实现服务端或 UPS 驱动及其管理�
 [控制文档](controls.md)及[隔离控制对照](../scripts/control_integration.py)规定 52 项结果、15 条驱动请求、8 个真实 tracking ID 和三次官方 CLI 执行；本批 [CI 42988803694][control-ci] 已通过（代码 `0e5413fe7f4ac2090c27fb491525e08279223105`），只关闭对应场景的未执行状态。对照仅用新建回环 upsd 和内存驱动，无真实 UPS、upsmon 或关机程序。
 
 查询 CLI 增量见 [query-cli.md](query-cli.md)：C01–C04 已有原生实现，40 场景直接差分已通过 [CI 42996781132](https://github.com/pangbit/moonnut/actions/runs/42996781132)（代码 `7aba3416dc8aa0f480fa9e805f6b1364e95d4442`）；49 项原生、20 项 JSON、14 项本库/查询 CLI 传输及全部既有回归通过。流式部分结果、完整错误与平台边界等仍保留 U/D。
+
+流式增量见 [streaming.md](streaming.md)：新增 with_list/next 和 upsc 逐行消费；53 项原生与 28 个本地场景通过，官方 Linux 差分待执行。B03/L05/C01–C03 仅补对应场景，不关闭完整流式/平台/资源差异。
 
 每个验收 ID 至少关联 `reference profile → case/input/state → reference result → moonnut result → diff → evidence → verdict`。跨行共用一个真实场景可以，但各断言须可定位。`未实现`、`未测`、`环境阻塞`、`双方行为冲突待裁定` 都不能记作通过。已经选择的范围内，任何未解决差异都阻止“完全一致”的结论。
 

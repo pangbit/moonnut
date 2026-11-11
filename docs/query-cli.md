@@ -76,9 +76,10 @@ checks parsing/diagnostics, not deadline behavior or elapsed-time equivalence.
 
 Remaining differences and unverified boundaries stay in the [matrix](parity-matrix.md):
 
-- Lists are buffered and bounded; upstream prints rows as they arrive and may exit
-  successfully after a mid-list failure. Partial output, malformed rows, extra
-  fields, resource limits and interrupted pipes are not equivalent yet.
+- Lists now use the [scoped streaming reader](streaming.md). Selected partial-output,
+  extra-field and list-error behavior is implemented; official streaming comparison
+  is pending. Resource limits, full parsing and pipe/TTY behavior still differ or
+  remain unverified.
 - Help/version, unknown-option/missing-option diagnostics, NSS/debug/config output,
   full server-error catalog and DNS/connect/IO/TLS error text remain incomplete.
 - Default addresses are implemented but the direct daemon comparison uses explicit
@@ -109,5 +110,7 @@ full-client target. No real UPS, host shutdown or Mooncakes publication is invol
 
 `upsc-cli.json` 保存原始证据；仅排除明确列举的六行 NSS 后端日志做业务 stderr 比较，
 因此仍保留日志差异。帮助/版本身份另存，不混入 40 个差分场景；可达服务上的 `-W`
-检查不冒充超时精度或计时边界验证。默认地址、IPv6、完整错误、长输入、流式部分结果、
+检查不冒充超时精度或计时边界验证。默认地址、IPv6、完整错误、长输入、完整流式/缓冲边界、
 LOGOUT 等待、信号/管道及 Windows 等仍未完成。客户端完整目标与用户控制发布的限制不变。
+
+流式增量的实现、部分列表退出 0 语义和实际验收状态见[流式列表](streaming.md#中文)。

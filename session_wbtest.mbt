@@ -3,6 +3,7 @@ async fn session_fixture(
   script : Array[(String, String)],
   run : async (Session) -> Unit,
   max_response_bytes~ : Int32 = 4194304,
+  max_rows~ : Int32 = 4096,
   connect_timeout_ms~ : Int32 = 10000,
 ) -> Unit {
   let server = @socket.TcpServer(@socket.Addr::parse("127.0.0.1:0"))
@@ -13,6 +14,7 @@ async fn session_fixture(
     security=Plaintext,
     max_line_bytes=64,
     max_response_bytes~,
+    max_rows~,
     connect_timeout_ms~,
   )
   @async.with_timeout(3000, () => {

@@ -4,6 +4,7 @@
 and close a separate connection. Use `connect()` to obtain an explicit `Session`,
 or `with_session()` to guarantee closure when a callback returns, throws or is
 cancelled. All 17 read methods are available on the same session.
+For incremental LIST rows and explicit completion errors, use [scoped streaming](streaming.md).
 
 ```mbt
 // In an async application; use an authorized endpoint and credential provider.

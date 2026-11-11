@@ -56,6 +56,11 @@ pub fn CommandReceipt::equal(Self, Self) -> Bool
 pub fn CommandReceipt::not_equal(Self, Self) -> Bool
 pub fn CommandReceipt::to_repr(Self) -> @debug.Repr
 
+pub struct ListReader {
+  // private fields
+}
+pub async fn ListReader::next(Self) -> Array[String]?
+
 pub(all) enum Security {
   TryTls
   TlsUnverified
@@ -100,6 +105,7 @@ pub async fn Session::set_password(Self, String) -> Unit
 pub async fn Session::set_tracking(Self, Bool) -> Unit
 pub async fn Session::set_username(Self, String) -> Unit
 pub async fn Session::set_var(Self, String, String, String) -> CommandReceipt
+pub async fn[T] Session::with_list(Self, Array[String], async (ListReader) -> T) -> T
 
 #derive(Eq, @debug.Debug)
 pub(all) enum TrackingStatus {
