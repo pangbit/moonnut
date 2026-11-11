@@ -49,10 +49,12 @@ Reference: NUT v2.8.4, commit
 
 Local macOS validation: 48 native tests pass, including three new focused control
 tests for receipts, arguments and an acknowledgement lost after dispatch.
-**Linux official comparison is pending for this change until a linked CI result
-is recorded.** The new test specifies 52 observable outcomes and 15 driver
-requests against installed official libupsclient, plus three actual upsrw/upscmd
-invocations. This is the designed acceptance trace, not an executed-pass claim.
+[CI 42988803694](https://github.com/pangbit/moonnut/actions/runs/42988803694) passed for code `0e5413fe7f4ac2090c27fb491525e08279223105`
+on Ubuntu 26.04 with NUT `2.8.4+really-2` and NSS. Both adapters produced the same
+52 observable outcomes and 15 driver requests; eight real tracking IDs were
+correlated. Three actual upsrw/upscmd invocations passed as well. Existing read,
+44-outcome session traces in three profiles, 10 moonnut TLS cases, four official
+upsc default-transport cases and 20 JSON cases also passed.
 
 [scripts/control_integration.py](../scripts/control_integration.py) starts a new
 private loopback upsd and a separate in-memory Unix-socket fixture for each probe.
@@ -78,7 +80,7 @@ until release reports success. Numeric driver statuses 0–4 exercise Success,
 Unknown, InvalidArgument, Failed and conversion-error-to-InvalidArgument mapping.
 This demonstrates server/driver-message semantics, not any hardware result.
 
-Source-backed behaviors covered by the pending trace:
+Behaviors verified against real upsd in this trace (driver effects are simulated):
 
 - Denied requests do not reach the driver. Unsupported INSTCMD is checked before
   permission; SET checks permission before variable lookup.
@@ -97,7 +99,8 @@ Source-backed behaviors covered by the pending trace:
 
 The library's optional parameter represents one protocol argument, as quoted by
 the C adapter. Official upscmd builds its command from raw argv text and has
-additional CLI quoting behavior; that is still open in C11. C++ PRIMARY fallback,
+additional CLI quoting behavior; that is still open in C11. C++ executeDeviceCommand
+also concatenates its parameter as raw text, a separate open L17 mapping. C++ PRIMARY fallback,
 multi-value setters, convenience waits/timeouts and full CLI mappings also remain
 open. The [matrix](parity-matrix.md) retains these gaps.
 
@@ -129,9 +132,11 @@ Accepted 表示收到 upsd 的 OK；Tracked(id) 表示带 ID 的接收确认，�
 确认也可能使结果不确定；再次调用是一次新动作。PRIMARY/MASTER 只是权限检查，不登记
 消费者或自动回退别名。FSD 设置 upsd 标记，真实监控程序可能据此触发关机。
 
-本地 48 项原生测试通过。本批新增 Linux 官方对照在记录 CI 链接前仍是待执行，
-不能以夹具设计冒充通过。设计对照 52 项结果、15 条驱动请求和 8 个真实生成的 tracking ID，
-并运行三次官方 upsrw/upscmd。每个探针新建等价的临时 upsd 与内存驱动；仅回环、合成 UPS、
+本地及 Linux 48 项原生测试通过。[CI 42988803694](https://github.com/pangbit/moonnut/actions/runs/42988803694)
+对应代码 `0e5413fe7f4ac2090c27fb491525e08279223105`，采用 Ubuntu 26.04、NUT 2.8.4+really-2、NSS。
+官方对照的 52 项结果、15 条驱动请求、8 个有效 tracking ID 及三次官方 upsrw/upscmd
+均已通过；既有读取、三种传输的 44 项会话对照、10 项本库 TLS、4 项官方默认传输及
+20 项 JSON 回归也通过。每个探针新建等价的临时 upsd 与内存驱动；仅回环、合成 UPS、
 人工 fixture.* 命令。没有物理驱动、upsmon、服务管理器或关机进程。
 
 原始结果、驱动字节、参数、模拟结果和状态保存在 CI 的 controls.json（保留七天）。
@@ -139,12 +144,34 @@ Accepted 表示收到 upsd 的 OK；Tracked(id) 表示带 ID 的接收确认，�
 延迟 SET 及 Pending→Success 由明确 release 控制，不用延时猜测动作已经完成。
 数字状态 0–4 覆盖真实 upsd 的 tracking 映射，但模拟驱动成功不代表实物成功。
 
-固定源码还显示：RANGE 按整数前缀检查，102tail 可通过第二个区间并原样转发；
+真实 upsd 对照也证实：RANGE 按整数前缀检查，102tail 可通过第二个区间并原样转发；
 INSTCMD 参数外围引号在 upsd 转发时丢失，空参数会折叠，多词参数可能被驱动分成多个参数
 并拒绝；FSD 仅在服务端修饰状态，驱动本身仍为 OL；官方 upscmd 等待得到 ERR FAILED
 仍退出 0。这些均列入隔离对照，不把 ACK 或退出 0 当作设备完成。
 
 C++ 别名回退、多值 setter、等待便捷 API、全部管理 CLI 仍未对齐。moonnut 参数接口表示
-一个协议参数，官方 upscmd 原始 argv 拼接的差异另留 C11 验收。默认仍为用户选择的官方
+一个协议参数，官方 upscmd 原始 argv 拼接的差异另留 C11 验收；C++ executeDeviceCommand 同样原样拼接参数，L17 保留差异。默认仍为用户选择的官方
 TRYSSL 行为，可能明文传输凭据；需要验证时显式使用 Tls/TlsCaFile。禁止真实 UPS 控制，
 不发布 Mooncakes，完整目标及未验项继续保留在矩阵。
+
+## Recorded observations / 实际记录
+
+| Observation / 观察点 | Result in both probes / 双方结果 |
+| --- | --- |
+| SET acknowledged, before fixture release | `OK`; value still `initial` |
+| After release | Value is `a"b\c#d` |
+| Range gap / integer-prefix value | `101` → `ERR INVALID-VALUE`; `102tail` → forwarded unchanged |
+| Held tracking ID / after release | `PENDING` → `SUCCESS` |
+| Fixture failure / invalid / conversion / unknown | `ERR FAILED` / `ERR INVALID-ARGUMENT` / `ERR INVALID-ARGUMENT` / `ERR UNKNOWN` |
+| Empty command parameter | Raw driver line retains a trailing space; parsed argument is absent |
+| Multiword command parameter | Raw driver line ends `two words`; fixture applies NUT dstate's malformed-count rejection |
+| FSD / fresh connection | `OK FSD-SET`; both reads are `FSD OL`; driver's value remains `OL` |
+| Official CLI waits | upsrw: exit 0 + SUCCESS; upscmd: exit 0 + SUCCESS; upscmd failure: exit 0 + ERR FAILED |
+
+The first CI attempt failed because the fixture wrongly required lowercase UUIDs.
+Actual NUT IDs are uppercase in this build. The fixture now accepts either case,
+retains the original bytes and verifies ID correlation; no client parsing change
+was needed. This fixture correction is included in the passed code above.
+
+首轮失败来自夹具误限小写 UUID；该 NUT 构建实际生成大写。已允许两种大小写，保留原文
+并验证关联；客户端不需要改动。上述通过记录包含此修正，未隐藏失败或将其算作通过。

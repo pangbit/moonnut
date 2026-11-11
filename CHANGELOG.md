@@ -5,10 +5,11 @@
 - Add explicit Session SET VAR, INSTCMD, PRIMARY/MASTER and FSD requests, with
   distinct accepted/tracked receipts and no implicit completion wait or replay.
 - Add three focused native tests and a separate isolated in-memory control
-  comparison against official libupsclient and upsrw/upscmd; Linux execution
-  evidence is pending for this change. No real UPS or host shutdown is involved.
+  comparison against official libupsclient (52 outcomes, 15 driver requests,
+  eight tracking IDs) and three upsrw/upscmd waits; pinned Linux CI passes.
+  No real UPS or host shutdown is involved.
 - 新增五项显式客户端控制请求，区分普通/带 tracking 的接受确认，不隐式等待或重发。
-  增加三项必要原生测试及独立内存夹具的官方库/CLI 对照；本批 Linux 执行证据待补，
+  增加三项必要原生测试及独立内存夹具的官方库/CLI 对照；固定 Linux CI 的 52 项控制结果、15 条驱动请求及三项官方等待对照通过，
   不涉及真实 UPS 或宿主机关机，默认传输风险及用户控制发布的限制不变。
 
 - Add explicit persistent Session connections with all 17 existing reads,

@@ -25,7 +25,8 @@ English: The approved target is full NUT **client** functionality and observable
 | PyNUT | 固定 NUT 提交中的模块 1.8.0；SHA-256 `a12d1e40f8cd926314157c137372628322dd09db94d697aca4bc9dc8beb64f82`；与原 v2.8.3 参考文件逐字节相同 |
 | moonnut audit start | `709b5deb77afb33fbee940d2f5fa8e9a2bb1427c`；当时为 11 种业务读取，默认验证 TLS |
 | Toolchain | `moonc 0.10.20+65efd5b93`、async `0.22.4`、native |
-| Current session evidence | [CI 42984926159](https://github.com/pangbit/moonnut/actions/runs/42984926159)；代码 `c2527e0457a2905c610661fde1b5e341c9c95b3a`：45 个原生测试、既有 TLS/JSON/真实 upsd 对照及会话 44 项结果 × 3 种传输配置全部通过 |
+| Current control evidence | [CI 42988803694](https://github.com/pangbit/moonnut/actions/runs/42988803694)；代码 `0e5413fe7f4ac2090c27fb491525e08279223105`：48 项原生、52 项控制结果、15 条驱动请求、8 个 tracking ID、三次官方 CLI；既有读取/会话/TLS/JSON 回归通过 |
+| Previous session evidence | [CI 42984926159](https://github.com/pangbit/moonnut/actions/runs/42984926159)；代码 `c2527e0457a2905c610661fde1b5e341c9c95b3a`：45 个原生测试、既有 TLS/JSON/真实 upsd 对照及会话 44 项结果 × 3 种传输配置全部通过 |
 | Previous read evidence | [CI 42981570296](https://github.com/pangbit/moonnut/actions/runs/42981570296)；代码 `79c962ad323f33d7f0bf1027040ca8f34b830e4b`：38 个原生测试、20 个 JSON、10 个本库 TLS、4 个官方 upsc 传输对照场景及真实 upsd 读取对照全部通过 |
 | Previous evidence | [CI 42973210924](https://github.com/pangbit/moonnut/actions/runs/42973210924)：34 个原生测试、14 个 JSON 用例、5 个 TLS 用例及真实 upsd 虚拟设备的选定对照 |
 
@@ -83,12 +84,12 @@ NUT 链路：设备 ↔ 驱动 ↔ 驱动 socket 协议 ↔ upsd ↔ **TCP 客�
 
 English: Current progress adds six read operations, CLI-compatible TLS negotiation, plaintext credential support, ASCII-insensitive echoed identifiers, and separate connection/read defaults. This does not close session, control, CLI replacement, parser limits, all timeout behavior, other client-library semantics, or monitoring/platform gaps. The matrix keeps these explicit. Compare equivalent states against pinned clients; retain raw evidence and distinguish synthetic tests from real-upsd differential tests. All control testing must remain disposable and isolated.
 
-English session progress: explicit connect/with_session, shared read methods, credential commands, tracking, LOGIN/LOGOUT and cancellation-safe serialization are implemented. The isolated session comparison adds 44 outcomes using official libupsclient; it does not exercise any UPS write or power action. Real operation tracking results, C++ empty-ID semantics, automatic reconnect and remaining CLI/platform behaviors stay open.
+English session progress: explicit connect/with_session, shared read methods, credential commands, tracking, LOGIN/LOGOUT and cancellation-safe serialization are implemented. The isolated session comparison adds 44 outcomes using official libupsclient; it does not exercise any UPS write or power action. Valid operation IDs are covered by P4 below; C++ empty-ID semantics, automatic reconnect and remaining CLI/platform behaviors stay open.
 
 ## Current P4 subset / 当前 P4 子集
 
 五项 Session 控制 API 已实现；本地 48 项原生测试通过。新增独立内存驱动、固定回环
-MoonBit/C 探针及官方 upsrw/upscmd 等待对照，Linux 直接运行状态见[控制文档](controls.md)。
+MoonBit/C 探针及官方 upsrw/upscmd 等待对照，Linux 官方对照已通过，实际结果与限制见[控制文档](controls.md)。
 检查 52 项可观察结果、15 条驱动请求及 8 个真实生成的 tracking ID；UUID 单独声明归一化。
 ACK 与实际应用分开，Pending 通过人工 release 转为 Success，FSD 不接触真实设备或监控程序。
 这仍不是 P4 整体完成；管理 CLI、C++ fallback/多值/便捷等待、参数边界和平台证据继续保留。

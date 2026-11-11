@@ -2,7 +2,7 @@
 
 **Client scope confirmed / 客户端范围已确认。** 固定基线、用户决定与阶段见 [parity-plan.md](parity-plan.md)。客户端实现和隔离对照继续进行；服务器/UPS 驱动实现范围外。
 
-NUT 固定源码：`541c2ecf0b2ec33dadb9f40b16acbe39042bd103` (2.8.4)。moonnut 审计起点：`709b5deb77afb33fbee940d2f5fa8e9a2bb1427c`；前批次新增 6 项读取及默认传输兼容；本批次补充显式持久会话、凭据、tracking 和 LOGIN/LOGOUT。
+NUT 固定源码：`541c2ecf0b2ec33dadb9f40b16acbe39042bd103` (2.8.4)。moonnut 审计起点：`709b5deb77afb33fbee940d2f5fa8e9a2bb1427c`；前批次完成选定读取、默认传输与显式会话；本批次增加五项控制请求及有效 tracking ID 对照。
 
 状态：**E** = 已实现且有选定场景证据，仍待完整验收；**M** = 缺失；**D** = 已知设计/接口差异；**U** = 未直接对照；**S** = 客户端相关部分待展开；**O** = 用户已确认范围外。`E` 不等于整行已通过。来源为文件级固定源码，最终用例须进一步记录行号/分支及运行证据。
 
@@ -33,15 +33,15 @@ N01–N30 覆盖固定版本顶层命令及 GET/LIST/SET 分支；GET TRACKING �
 | N19 | USERNAME | E/U；独立/自动提交、重复拒绝、先密码后用户名；[会话官方对照通过][session-ci] | 缺失/空/重复、与 PASSWORD 顺序、应答不代表权限有效、会话独立性 | P3 |
 | N20 | PASSWORD | E/U；独立提交、重复拒绝、错误密码延迟验证；[会话官方对照通过][session-ci] | 重复/错误值、延迟验证、明确拒绝；不能用匿名读取成功证明认证成功 | P3 |
 | N21 | SET TRACKING ON/OFF | E/U；SET 分派要求先提交两项凭据；开关/重复/跨连接独立性已实现并通过[会话官方对照][session-ci] | 连接内开关、凭据前置、重复开关、断开清理、支持/不支持构建 | P3 |
-| N22 | SET VAR | E/U；显式 set_var、Accepted/Tracked；原生通过，Linux 对照待验，见[控制证据](controls.md) | RW/只读/长度/枚举/范围/数值解析、权限、驱动失败、无跟踪 OK 与实际完成区别 | P4 |
-| N23 | INSTCMD [parameter] | E/U；显式 execute_command 保留客户端空/缺省参数，驱动转发差异有夹具待验 | 有/无/空/转义参数、命令名及大小写、未知命令与拒绝顺序、驱动失败、跟踪结果 | P4 |
+| N22 | SET VAR | E/U；显式 set_var、Accepted/Tracked；原生及固定 Linux 对照通过，见[控制证据](controls.md)；更多驱动失败/边界仍未验 | RW/只读/长度/枚举/范围/数值解析、权限、驱动失败、无跟踪 OK 与实际完成区别 | P4 |
+| N23 | INSTCMD [parameter] | E/U；显式 execute_command 保留客户端空/缺省参数，驱动转发差异在真实 upsd 已对照；命令大小写等边界未全验 | 有/无/空/转义参数、命令名及大小写、未知命令与拒绝顺序、驱动失败、跟踪结果 | P4 |
 | N24 | GET TRACKING | E/U；同连接 ON/OFF、新连接 OFF，[会话官方对照通过][session-ci] | 同一连接 ON/OFF，重连后的状态 | P3 |
-| N25 | GET TRACKING id | E/U；返回五种 TrackingStatus，其他协议错误仍抛出；真实未知 ID/未配置对照通过；P4 有效 ID 生命周期夹具已加入、Linux 待验 | 有效 ID、未开 tracking、未知/过期 ID、pending/success/各失败；不可用普通 fresh-query 代替会话 | P3；实际操作结果 P4 |
+| N25 | GET TRACKING id | E/U；返回五种 TrackingStatus，其他协议错误仍抛出；真实未知 ID/未配置对照通过；P4 八个有效 ID 的 Pending/终态对照通过，过期 ID 等仍未验 | 有效 ID、未开 tracking、未知/过期 ID、pending/success/各失败；不可用普通 fresh-query 代替会话 | P3；实际操作结果 P4 |
 | N26 | LOGOUT | E/U；显式 LOGOUT 校验 Goodbye 并关闭；LOGIN 清理对照，close 为本地关闭 | Goodbye、服务端关闭、LOGIN/tracking 清理、重复使用已关闭会话 | P3 |
 | N27 | LOGIN ups | E/U；缺凭据、未知 UPS、正确/错误密码、重复、两个消费者及注销计数；[会话官方对照通过][session-ci] | 缺凭据/拒绝/成功/重复/未知 UPS、NUMLOGINS 与 CLIENT 联动；属于状态操作 | P3 |
-| N28 | PRIMARY ups | E/U；显式请求，无隐式 LOGIN/fallback；Linux 待验 | 权限检查、成功文本、拒绝/未知 UPS；别名 fallback 按选定客户端行为 | P4 |
-| N29 | MASTER ups | E/U；显式请求，保留独立回复；Linux 待验 | 与 PRIMARY 对应权限及不同成功文本；兼容别名仍属于验收范围 | P4 |
-| N30 | FSD ups | E/U；显式请求；重复/新连接/驱动状态内存对照待验 | 仅一次性模拟服务中权限、状态标记、重复调用、断开/重启行为；无宿主机关机动作 | P4 |
+| N28 | PRIMARY ups | E/U；显式请求，无隐式 LOGIN/fallback；权限/成功/未知 UPS 对照通过 | 权限检查、成功文本、拒绝/未知 UPS；别名 fallback 按选定客户端行为 | P4 |
+| N29 | MASTER ups | E/U；显式请求，保留独立回复；权限/成功/未知 UPS 对照通过 | 与 PRIMARY 对应权限及不同成功文本；兼容别名仍属于验收范围 | P4 |
+| N30 | FSD ups | E/U；显式请求；重复/新连接/驱动状态内存对照通过；其他断连/重启边界未全验 | 仅一次性模拟服务中权限、状态标记、重复调用、断开/重启行为；无宿主机关机动作 | P4 |
 
 ## Observable behavior / 横向行为
 
@@ -60,7 +60,7 @@ N01–N30 覆盖固定版本顶层命令及 GET/LIST/SET 分支；GET TRACKING �
 | B11 | CLI 输出与结束状态 | D | stdout/stderr、精确文本/空格/换行、错误/帮助退出码、版本身份、输入缺失、管道行为 | P1/P2；C01–C14 |
 | B12 | 环境/配置优先级 | M/D | NUT_DEFAULT_CONNECT_TIMEOUT、NUT_DEBUG_LEVEL、默认配置/证书与 CLI 参数的真实优先级；MOONNUT_* 当前非等价接口 | P2；[C 实现][cimpl] |
 | B13 | 验证覆盖口径 | U | 每个 profile 保存同输入参考结果和本库结果；自测、直接差分、虚拟设备、硬件证据分开 | P0–P6 |
-| B14 | 授权、重复与不确定结果 | E/U；发送后丢确认关闭且不重发原生通过；隔离权限/驱动动作对照待验 | 拒绝时无驱动动作；成功 ACK 与完成分开；发送后断线不自动重试；重复调用与参考结果一致 | P4；[SET][set]、[INSTCMD][inst] |
+| B14 | 授权、重复与不确定结果 | E/U；发送后丢确认关闭且不重发原生通过；隔离权限/驱动动作对照通过；不是实物效果验收 | 拒绝时无驱动动作；成功 ACK 与完成分开；发送后断线不自动重试；重复调用与参考结果一致 | P4；[SET][set]、[INSTCMD][inst] |
 
 B08 不能只断言“均失败”。使用固定 [server/neterr.h][errors] 中的每个错误码为索引，并加 [upsclient.h][capi] 中 DNS/IO/TLS/解析等本地错误；旧命令遗留码先判定在本版本是否可达。不可达须有源码和审核记录，不能伪造服务器触发路径。当前只检查部分 `Server(code)`，CLI 会合并错误信息。
 
@@ -75,14 +75,14 @@ B08 不能只断言“均失败”。使用固定 [server/neterr.h][errors] 中�
 | C03 | upsc -c ups | E/D；API/演示已提供，CLI 可替换尚缺 | 登录客户端列表和输出 | [upsc][upsc]；P2/P3 |
 | C04 | upsc -h / -V / -W | M/D | 帮助、版本、连接超时、合法/非法参数及环境覆盖 | [upsc][upsc]；P2 |
 | C05 | upsrw 默认 / -l | E/D | 完整变量、描述、类型、长度、选项、SELECTED 标记、当前值；不能只比较集合 | [upsrw][upsrw]；P1/P2 |
-| C06 | upsrw -s VAR=VALUE | M；库单值协议已实现，官方 CLI 合成写入对照待验 | 非交互写入、值转义/边界、错误、完成语义 | [upsrw][upsrw]；P4 |
+| C06 | upsrw -s VAR=VALUE | M；库单值协议已实现，官方 CLI 合成写入对照通过，未实现替代 CLI | 非交互写入、值转义/边界、错误、完成语义 | [upsrw][upsrw]；P4 |
 | C07 | upsrw -s VAR；-u/-p | M | 交互输入值与缺失凭据提示、EOF/非 TTY；只用一次性假凭据 | [upsrw][upsrw]；P4 |
-| C08 | upsrw -w / -t | M；官方 SUCCESS 参考执行已接入 CI 待验，未实现替代 CLI | tracking、超时默认/覆盖、失败结果/退出码 | [upsrw][upsrw]；P4 |
+| C08 | upsrw -w / -t | M；官方 SUCCESS 参考执行通过，未实现替代 CLI | tracking、超时默认/覆盖、失败结果/退出码 | [upsrw][upsrw]；P4 |
 | C09 | upsrw -h / -V / -W | M/D | 与该程序实际默认及错误逐项匹配 | [upsrw][upsrw]；P2 |
 | C10 | upscmd -l ups | E/D | 所有命令及描述、缺描述、顺序/文本、空集合 | [upscmd][upscmd]；P1/P2 |
 | C11 | upscmd ups command [value] | M；库协议已实现，原始 argv 拼接与库参数映射差异仍待验 | 无/有参数的实际传递、权限/错误及 ACK | [upscmd][upscmd]；P4 |
 | C12 | upscmd -u/-p；缺凭据交互 | M | 明文/TLS profile、提示、EOF/非 TTY、环境策略 | [upscmd][upscmd]；P4 |
-| C13 | upscmd -w / -t | M；官方 SUCCESS/ERR FAILED 及退出码参考待验，未实现替代 CLI | 与 upsrw 同样逐项验收，不假定两客户端相同 | [upscmd][upscmd]；P4 |
+| C13 | upscmd -w / -t | M；官方 SUCCESS/ERR FAILED 及退出 0 参考已验证，未实现替代 CLI | 与 upsrw 同样逐项验收，不假定两客户端相同 | [upscmd][upscmd]；P4 |
 | C14 | upscmd -h / -V / -W | M/D | 参数/默认/输出/退出码及未知选项 | [upscmd][upscmd]；P2 |
 
 JSON 是 moonnut 的额外输出模式，不是以上官方 CLI 的等价证据。保留扩展与是否要求精确 CLI 可替换，需要在 P0 记录。
@@ -114,7 +114,7 @@ JSON 是 moonnut 的额外输出模式，不是以上官方 CLI 的等价证据�
 | L14 | libnutclient Client/TcpClient | E/D/M：显式会话、独立凭据、注销已提供；连接/重连/超时/状态/调试、认证/注销；不得把 protected sendQuery 误当公开 API |
 | L15 | Device/Variable/Command 包装及 C 接口 | E/M/D：对象身份/有效性/集合、描述/值、查找与 has*；C 返回值/所有权/错误，以及 ABI 需求待逐符号确认 |
 | L16 | getDeviceVariableValues / getDevicesVariableValues | M/D：单设备/跨设备批量读取、vector 值、异步请求次序、部分失败；没有原子快照保证 |
-| L17 | setDeviceVariable 两种重载 / executeDeviceCommand | E/M/U：Session 单值/可选参数及 CommandReceipt 已实现；C++ 多值/返回类型映射仍缺，真实对照待验 |
+| L17 | setDeviceVariable 两种重载 / executeDeviceCommand | E/M/U/D：Session 单值/可选参数及 CommandReceipt 已实现；C++ 多值/返回类型映射仍缺，executeDeviceCommand 原样拼接参数与本库单参数引用不同；单值协议已通过 C 适配器对照，未直接对照 C++ 映射 |
 | L18 | deviceLogin / deviceGetNumLogins / deviceGetClients / listDeviceClients / devicePrimary / deviceMaster / deviceForcedShutdown | E/M：已有单 UPS 计数/列表读取、LOGIN、primary/master/FSD；跨设备组合及 C++ primary fallback 仍缺；映射 N12/N13/N27–N30 与跨设备组合、别名 fallback |
 | L19 | hasFeature / isFeatureEnabled / setFeature / getTrackingResult | E/U/D：tracking 开关/读取/结果已提供；C++ 空 ID 直接成功与本库网络命令语义不同；通用 feature 探测仍缺；TRACKING 能力、启用状态、结果枚举及未知 feature；不能只看版本推断 |
 | L20 | libnutclientstub / nutclientmem | S/M：若纳入对应公共测试替身/内存客户端，则另列构造与状态语义，不由网络查询自动覆盖 |
@@ -163,7 +163,7 @@ X01–X08 为 **O**：用户明确不实现服务端或 UPS 驱动及其管理�
 前批会话代码与[会话文档](sessions.md)、[原生会话测试](../session_wbtest.mbt)、[官方 C 会话适配器](../scripts/nut_session_reference.c)关联。真实对照包含 44 项结果，明文/default TRYSSL 配置相同，另重复 moonnut 验证 TLS 的业务结果；注销计数按一秒内最终清理验收，不冒充瞬时清理或有效控制结果。
 
 当前 P4 子集：48 项原生测试通过，三项新增见 [controls_wbtest.mbt](../controls_wbtest.mbt)。
-[控制文档](controls.md)及[隔离控制对照](../scripts/control_integration.py)规定 52 项结果、15 条驱动请求、8 个真实 tracking ID 和三次官方 CLI 执行；本批 Linux 运行证据仍待补，不提前标通过。对照仅用新建回环 upsd 和内存驱动，无真实 UPS、upsmon 或关机程序。
+[控制文档](controls.md)及[隔离控制对照](../scripts/control_integration.py)规定 52 项结果、15 条驱动请求、8 个真实 tracking ID 和三次官方 CLI 执行；本批 [CI 42988803694][control-ci] 已通过（代码 `0e5413fe7f4ac2090c27fb491525e08279223105`），只关闭对应场景的未执行状态。对照仅用新建回环 upsd 和内存驱动，无真实 UPS、upsmon 或关机程序。
 
 每个验收 ID 至少关联 `reference profile → case/input/state → reference result → moonnut result → diff → evidence → verdict`。跨行共用一个真实场景可以，但各断言须可定位。`未实现`、`未测`、`环境阻塞`、`双方行为冲突待裁定` 都不能记作通过。已经选择的范围内，任何未解决差异都阻止“完全一致”的结论。
 
@@ -195,3 +195,5 @@ English: Client scope and official CLI defaults are confirmed. X01–X08 server/
 [current-ci]: https://github.com/pangbit/moonnut/actions/runs/42981570296
 
 [session-ci]: https://github.com/pangbit/moonnut/actions/runs/42984926159
+
+[control-ci]: https://github.com/pangbit/moonnut/actions/runs/42988803694
