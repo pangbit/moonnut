@@ -25,7 +25,8 @@ English: The approved target is full NUT **client** functionality and observable
 | PyNUT | 固定 NUT 提交中的模块 1.8.0；SHA-256 `a12d1e40f8cd926314157c137372628322dd09db94d697aca4bc9dc8beb64f82`；与原 v2.8.3 参考文件逐字节相同 |
 | moonnut audit start | `709b5deb77afb33fbee940d2f5fa8e9a2bb1427c`；当时为 11 种业务读取，默认验证 TLS |
 | Toolchain | `moonc 0.10.20+65efd5b93`、async `0.22.4`、native |
-| Current evidence | [CI 42981570296](https://github.com/pangbit/moonnut/actions/runs/42981570296)；代码 `79c962ad323f33d7f0bf1027040ca8f34b830e4b`：38 个原生测试、20 个 JSON、10 个本库 TLS、4 个官方 upsc 传输对照场景及真实 upsd 读取对照全部通过 |
+| Current session evidence | [CI 42984926159](https://github.com/pangbit/moonnut/actions/runs/42984926159)；代码 `c2527e0457a2905c610661fde1b5e341c9c95b3a`：45 个原生测试、既有 TLS/JSON/真实 upsd 对照及会话 44 项结果 × 3 种传输配置全部通过 |
+| Previous read evidence | [CI 42981570296](https://github.com/pangbit/moonnut/actions/runs/42981570296)；代码 `79c962ad323f33d7f0bf1027040ca8f34b830e4b`：38 个原生测试、20 个 JSON、10 个本库 TLS、4 个官方 upsc 传输对照场景及真实 upsd 读取对照全部通过 |
 | Previous evidence | [CI 42973210924](https://github.com/pangbit/moonnut/actions/runs/42973210924)：34 个原生测试、14 个 JSON 用例、5 个 TLS 用例及真实 upsd 虚拟设备的选定对照 |
 
 CI 记录包版本、架构、官方 CLI 二进制 SHA-256 和动态库/TLS 后端。发行包可能带补丁，源码标签与发行构建分别记录。后续更换参考版本/构建需列出差异并重新对照，不能静默升级。Mac arm64 仅有 moonnut 本地验证，不冒充官方 NSS/Linux 全部平台对照。

@@ -63,6 +63,7 @@ unverified TLS, plaintext including credentials after STARTTLS refusal. Use
 explicit `Tls` or `TlsCaFile` when certificate and hostname verification is needed.
 No real UPS or host shutdown action is used in validation.
 
+[CI 42984926159](https://github.com/pangbit/moonnut/actions/runs/42984926159) passed for code `c2527e0457a2905c610661fde1b5e341c9c95b3a`.
 The native fixtures cover state sequencing, recoverable errors, distinct tracking
 outcomes, per-reply limits, concurrent serialization and cancellation. The Linux
 integration adds a LOGIN-only disposable account and compares 44 observable
@@ -102,4 +103,4 @@ TrackingStatus 保留五种结果；ERR UNKNOWN、ERR INVALID-ARGUMENT、ERR FAI
 Linux 对照通过官方 libupsclient 比较 44 项结果，涵盖两个同时登录的连接、重复地址、
 注销清理、错误密码和新连接状态。明文与默认 TLS 配置相同；另用 moonnut 验证 TLS
 重复业务结果对照。注销计数在一秒内等待收敛，不声称 Goodbye 到达瞬间一定已经清理。
-具体通过状态以本提交 CI 和[验收矩阵](parity-matrix.md)为准，当前仍未完整对齐 NUT 客户端。
+上述会话对照已由 [CI 42984926159](https://github.com/pangbit/moonnut/actions/runs/42984926159) 验证通过；尚未完整对齐的能力仍列于[验收矩阵](parity-matrix.md)，当前不宣称完整客户端一致。

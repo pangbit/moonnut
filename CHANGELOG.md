@@ -7,11 +7,13 @@
   Preserve fresh connections for Client reads; serialize session requests and
   close incomplete/cancelled streams without automatic replay.
 - Add focused lifecycle tests and a loopback-only 44-outcome comparison with
-  official libupsclient using a disposable LOGIN-only account. No UPS writes or
+  official libupsclient using a disposable LOGIN-only account; all three transport
+  profiles pass. No UPS writes or
   power commands are added; real operation-tracking outcomes remain unverified.
 - 新增显式持久会话，复用 17 项读取，并提供独立凭据、tracking、LOGIN/LOGOUT 及连接状态。
   Client 读取仍用独立连接；会话串行执行，未完整读取或取消后关闭，不自动重放。
-- 新增必要生命周期测试及官方 C 库 44 项回环对照，账号仅有 LOGIN 权限；没有新增 UPS
+- 新增必要生命周期测试及官方 C 库 44 项回环对照，三种传输配置均通过；账号仅有
+  LOGIN 权限，没有新增 UPS
   写入/电源命令，真实操作 tracking 结果仍待后续隔离验收。默认明文回退风险保持明确说明。
 
 - Confirm the complete NUT client target and pin NUT 2.8.4; add a staged plan and

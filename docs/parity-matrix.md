@@ -23,22 +23,22 @@ N01–N30 覆盖固定版本顶层命令及 GET/LIST/SET 分支；GET TRACKING �
 | N09 | LIST RANGE | E；90..100 与 102..105 | 全部独立区间、边界/顺序、无范围为空、真实整数格式；合成小数另标扩展 | P1 |
 | N10 | LIST CMD | E；两个设备命令表 | 空表、完整集合/顺序、未知 UPS、驱动不可用；任何命令名均不执行 | P1 |
 | N11 | GET CMDDESC | E；已列命令描述 | 未定义/未列命令的实际占位文本、upstream.、未知 UPS；不假设必然 CMD-NOT-SUPPORTED | P1 |
-| N12 | GET NUMLOGINS | E/U；新增真实 upsd 0→1→2→1→0 LOGIN 计数对照脚本；待本批 CI | 零计数、未知/不可用 UPS；登录/断开后的计数生命周期后续补验 | P2/P3 |
-| N13 | LIST CLIENT | E/U；新增两个 LOGIN 客户端及重复 IPv4 地址对照；IPv6 实际会话仍未验 | 空列表、IPv4/IPv6 地址、多个 LOGIN 客户端、同地址重复、未知 UPS | P2/P3 |
+| N12 | GET NUMLOGINS | E/U；真实 upsd 0→1→2→1→0 LOGIN/LOGOUT 计数对照通过；[会话 CI][session-ci] | 零计数、未知/不可用 UPS；LOGIN/LOGOUT 计数已验；异常断开及驱动不可用仍待补验 | P2/P3 |
+| N13 | LIST CLIENT | E/U；两个 LOGIN 客户端及重复 IPv4 地址对照通过；IPv6 实际会话仍未验 | 空列表、IPv4/IPv6 地址、多个 LOGIN 客户端、同地址重复、未知 UPS | P2/P3 |
 | N14 | VER | E/U；VER 原文与 libupsclient/PyNUT 一致；[CI 42981570296][current-ci] | 原始版本/构建文本，带多余参数错误；区别本机客户端版本 | P2 |
 | N15 | NETVER | E/U；NETVER 与 libupsclient 一致；[CI 42981570296][current-ci] | 协议版本响应、参数错误 | P2 |
 | N16 | PROTVER | E/U；PROTVER 与 libupsclient 一致；[CI 42981570296][current-ci] | 与 NETVER 别名行为逐项比较；旧版本 fallback 只有另纳版本才验收 | P2 |
 | N17 | HELP | E/U；HELP 原文与 libupsclient/PyNUT 一致；[CI 42981570296][current-ci] | 精确响应；不得将 HELP 未显示的命令认定不支持 | P2 |
 | N18 | STARTTLS | E/U；默认 TRYSSL，显式验证/强制 TLS；脚本对照 upsc | 支持/拒绝/无 TLS 构建/重复升级、握手边界、信任与主机名；默认与可选 profile 分开 | P1/P3 |
-| N19 | USERNAME | E/U；独立/自动提交、重复拒绝、先密码后用户名；新增官方对照 | 缺失/空/重复、与 PASSWORD 顺序、应答不代表权限有效、会话独立性 | P3 |
-| N20 | PASSWORD | E/U；独立提交、重复拒绝、错误密码延迟验证；新增官方对照 | 重复/错误值、延迟验证、明确拒绝；不能用匿名读取成功证明认证成功 | P3 |
-| N21 | SET TRACKING ON/OFF | E/U；SET 分派要求先提交两项凭据；开关/重复/跨连接独立性已有实现与对照脚本 | 连接内开关、凭据前置、重复开关、断开清理、支持/不支持构建 | P3 |
+| N19 | USERNAME | E/U；独立/自动提交、重复拒绝、先密码后用户名；[会话官方对照通过][session-ci] | 缺失/空/重复、与 PASSWORD 顺序、应答不代表权限有效、会话独立性 | P3 |
+| N20 | PASSWORD | E/U；独立提交、重复拒绝、错误密码延迟验证；[会话官方对照通过][session-ci] | 重复/错误值、延迟验证、明确拒绝；不能用匿名读取成功证明认证成功 | P3 |
+| N21 | SET TRACKING ON/OFF | E/U；SET 分派要求先提交两项凭据；开关/重复/跨连接独立性已实现并通过[会话官方对照][session-ci] | 连接内开关、凭据前置、重复开关、断开清理、支持/不支持构建 | P3 |
 | N22 | SET VAR | M | RW/只读/长度/枚举/范围/数值解析、权限、驱动失败、无跟踪 OK 与实际完成区别 | P4 |
 | N23 | INSTCMD [parameter] | M | 有/无/空/转义参数、命令名及大小写、未知命令与拒绝顺序、驱动失败、跟踪结果 | P4 |
-| N24 | GET TRACKING | E/U；同连接 ON/OFF、新连接 OFF，新增官方对照 | 同一连接 ON/OFF，重连后的状态 | P3 |
+| N24 | GET TRACKING | E/U；同连接 ON/OFF、新连接 OFF，[会话官方对照通过][session-ci] | 同一连接 ON/OFF，重连后的状态 | P3 |
 | N25 | GET TRACKING id | E/U；返回五种 TrackingStatus，其他协议错误仍抛出；真实未知 ID/未配置对照，实际操作生命周期仍待 P4 | 有效 ID、未开 tracking、未知/过期 ID、pending/success/各失败；不可用普通 fresh-query 代替会话 | P3；实际操作结果 P4 |
 | N26 | LOGOUT | E/U；显式 LOGOUT 校验 Goodbye 并关闭；LOGIN 清理对照，close 为本地关闭 | Goodbye、服务端关闭、LOGIN/tracking 清理、重复使用已关闭会话 | P3 |
-| N27 | LOGIN ups | E/U；缺凭据、未知 UPS、正确/错误密码、重复、两个消费者及注销计数；新增官方对照 | 缺凭据/拒绝/成功/重复/未知 UPS、NUMLOGINS 与 CLIENT 联动；属于状态操作 | P3 |
+| N27 | LOGIN ups | E/U；缺凭据、未知 UPS、正确/错误密码、重复、两个消费者及注销计数；[会话官方对照通过][session-ci] | 缺凭据/拒绝/成功/重复/未知 UPS、NUMLOGINS 与 CLIENT 联动；属于状态操作 | P3 |
 | N28 | PRIMARY ups | M | 权限检查、成功文本、拒绝/未知 UPS；别名 fallback 按选定客户端行为 | P4 |
 | N29 | MASTER ups | M | 与 PRIMARY 对应权限及不同成功文本；兼容别名仍属于验收范围 | P4 |
 | N30 | FSD ups | M | 仅一次性模拟服务中权限、状态标记、重复调用、断开/重启行为；无宿主机关机动作 | P4 |
@@ -156,9 +156,9 @@ X01–X08 为 **O**：用户明确不实现服务端或 UPS 驱动及其管理�
 
 ## Evidence and completion / 证据与关闭条件
 
-现有 E 的依据是 [固定 moonnut CI](https://github.com/pangbit/moonnut/actions/runs/42973210924)、[真实服务脚本](../scripts/upsd_integration.py)、[发现自测](../discovery_wbtest.mbt)、[CLI 自测](../scripts/cli_json_smoke.py) 与 [TLS 自测](../scripts/tls_smoke.py)。本批次运行 38 个原生测试、20 个 JSON 用例及 10 个本库 TLS 用例；代码提交 `79c962ad323f33d7f0bf1027040ca8f34b830e4b` 的 [CI 42981570296][current-ci] 已全部通过，包括上述新增读取及默认传输与官方 upsc 的 4 个场景。默认 TLS 信任/回退已取得直接证据，TLS 全配置/后端及其他默认行为仍未全部关闭。
+现有 E 的依据是 [固定 moonnut CI](https://github.com/pangbit/moonnut/actions/runs/42973210924)、[真实服务脚本](../scripts/upsd_integration.py)、[发现自测](../discovery_wbtest.mbt)、[CLI 自测](../scripts/cli_json_smoke.py) 与 [TLS 自测](../scripts/tls_smoke.py)。前一批次运行 38 个原生测试、20 个 JSON 用例及 10 个本库 TLS 用例；代码提交 `79c962ad323f33d7f0bf1027040ca8f34b830e4b` 的 [CI 42981570296][current-ci] 已全部通过，包括上述新增读取及默认传输与官方 upsc 的 4 个场景。默认 TLS 信任/回退已取得直接证据，TLS 全配置/后端及其他默认行为仍未全部关闭。
 
-本批本机 45 项原生测试、20 项 JSON 和 10 项 TLS 用例通过；官方会话对照待本批 CI。
+本批代码 `c2527e0457a2905c610661fde1b5e341c9c95b3a` 的 [CI 42984926159][session-ci] 全部通过：45 项原生测试、20 项 JSON、10 项本库 TLS、4 项官方默认传输场景；会话 44 项结果在明文、默认 TLS 和 moonnut 验证 TLS 三种配置下与官方 libupsclient 一致。
 
 本批会话代码与[会话文档](sessions.md)、[原生会话测试](../session_wbtest.mbt)、[官方 C 会话适配器](../scripts/nut_session_reference.c)关联。真实对照包含 44 项结果，明文/default TRYSSL 配置相同，另重复 moonnut 验证 TLS 的业务结果；注销计数按一秒内最终清理验收，不冒充瞬时清理或有效控制结果。
 
@@ -190,3 +190,5 @@ English: Client scope and official CLI defaults are confirmed. X01–X08 server/
 [hcl]: https://github.com/networkupstools/nut/blob/541c2ecf0b2ec33dadb9f40b16acbe39042bd103/data/driver.list.in
 
 [current-ci]: https://github.com/pangbit/moonnut/actions/runs/42981570296
+
+[session-ci]: https://github.com/pangbit/moonnut/actions/runs/42984926159
