@@ -74,18 +74,18 @@ B08 不能只断言“均失败”。使用固定 [server/neterr.h][errors] 中�
 | C02 | upsc ups [variable] | E/D | 全变量/单值、server.*、地址解析、错误/输出 | [upsc][upsc]；P1/P2 |
 | C03 | upsc -c ups | E/D；API/演示已提供，CLI 可替换尚缺 | 登录客户端列表和输出 | [upsc][upsc]；P2/P3 |
 | C04 | upsc -h / -V / -W | M/D | 帮助、版本、连接超时、合法/非法参数及环境覆盖 | [upsc][upsc]；P2 |
-| C05 | upsrw 默认 / -l | E/U/D；原生 upsrw 默认/-l 输出已实现，官方差分待验 | 完整变量、描述、类型、长度、选项、SELECTED 标记、当前值；不能只比较集合 | [upsrw][upsrw]；P1/P2 |
-| C06 | upsrw -s VAR=VALUE | E/U/D；原生 upsrw -s 已实现；值/权限/范围差分待验，长输入等未完 | 非交互写入、值转义/边界、错误、完成语义 | [upsrw][upsrw]；P4 |
-| C07 | upsrw -s VAR；-u/-p | E/U/D；POSIX 用户名/密码/值提示已实现；三类提示差分待验，TTY/EOF 边界未完 | 交互输入值与缺失凭据提示、EOF/非 TTY；只用一次性假凭据 | [upsrw][upsrw]；P4 |
-| C08 | upsrw -w / -t | E/U/D；原生 -w/-t 已实现，10 秒默认/每秒轮询；0/1 秒及终态差分待验 | tracking、超时默认/覆盖、失败结果/退出码 | [upsrw][upsrw]；P4 |
+| C05 | upsrw 默认 / -l | E/U/D；原生 upsrw 默认/-l 有序列表文本已通过[管理 CLI 对照][admin-ci] | 完整变量、描述、类型、长度、选项、SELECTED 标记、当前值；不能只比较集合 | [upsrw][upsrw]；P1/P2 |
+| C06 | upsrw -s VAR=VALUE | E/U/D；原生 upsrw -s 的值/权限/范围对照通过；长输入等未完 | 非交互写入、值转义/边界、错误、完成语义 | [upsrw][upsrw]；P4 |
+| C07 | upsrw -s VAR；-u/-p | E/U/D；POSIX 用户名/密码/值提示已实现；upsrw 值提示在 Linux 管道对照通过，用户名/密码本批仅直接测 upscmd；TTY/EOF 未完 | 交互输入值与缺失凭据提示、EOF/非 TTY；只用一次性假凭据 | [upsrw][upsrw]；P4 |
+| C08 | upsrw -w / -t | E/U/D；原生 -w/-t 已实现，10 秒默认/每秒轮询；upsrw SUCCESS 已对照，0/1 秒及失败本批仅直接测 upscmd；完整边界未完 | tracking、超时默认/覆盖、失败结果/退出码 | [upsrw][upsrw]；P4 |
 | C09 | upsrw -h / -V / -W | E/U/D；短选项与 -W 已实现；帮助/版本身份、非法选项及全部环境边界仍有差异 | 与该程序实际默认及错误逐项匹配 | [upsrw][upsrw]；P2 |
-| C10 | upscmd -l ups | E/U/D；原生 upscmd -l 已实现；精确列表文本差分待验，失败边界未完 | 所有命令及描述、缺描述、顺序/文本、空集合 | [upscmd][upscmd]；P1/P2 |
-| C11 | upscmd ups command [value] | E/U/D；原生 upscmd 原样拼接 argv，空/多词/引用/转义参数差分待验 | 无/有参数的实际传递、权限/错误及 ACK | [upscmd][upscmd]；P4 |
-| C12 | upscmd -u/-p；缺凭据交互 | E/U/D；原生 -u/-p 和 POSIX 提示已实现；TTY/EOF/Windows 等仍未完 | 明文/TLS profile、提示、EOF/非 TTY、环境策略 | [upscmd][upscmd]；P4 |
-| C13 | upscmd -w / -t | E/U/D；原生等待保留终态 ERR 退出 0、超时退出 1；官方差分待验 | 与 upsrw 同样逐项验收，不假定两客户端相同 | [upscmd][upscmd]；P4 |
+| C10 | upscmd -l ups | E/U/D；原生 upscmd -l 已实现；精确列表文本对照通过，失败边界未完 | 所有命令及描述、缺描述、顺序/文本、空集合 | [upscmd][upscmd]；P1/P2 |
+| C11 | upscmd ups command [value] | E/U/D；原生 upscmd 原样拼接 argv，空/多词/引用/转义参数及驱动记录对照通过；畸形/长输入仍未完 | 无/有参数的实际传递、权限/错误及 ACK | [upscmd][upscmd]；P4 |
+| C12 | upscmd -u/-p；缺凭据交互 | E/U/D；原生 -u/-p 与用户名/密码提示已通过 Linux 管道对照；TTY/EOF/Windows 等仍未完 | 明文/TLS profile、提示、EOF/非 TTY、环境策略 | [upscmd][upscmd]；P4 |
+| C13 | upscmd -w / -t | E/U/D；原生等待保留终态 ERR 退出 0、超时退出 1，选定场景已通过；完整计时/错误边界未完 | 与 upsrw 同样逐项验收，不假定两客户端相同 | [upscmd][upscmd]；P4 |
 | C14 | upscmd -h / -V / -W | E/U/D；与 C09 相同的未完成项仍保留，不声称完整 CLI 可替换 | 参数/默认/输出/退出码及未知选项 | [upscmd][upscmd]；P2 |
 
-管理 CLI 的本批执行状态见 [admin-cli.md](admin-cli.md)；六行 NSS 日志差异明确保留，其余业务文本/退出码直接比较。新增单行 request_line 是受限交换，不等同于分离 send/read 或流式接口。
+管理 CLI 本批 [CI 42993115828][admin-ci] 已通过：25 场景、18 条驱动请求、7 个 ID；详见 [admin-cli.md](admin-cli.md)。六行 NSS 日志差异明确保留，其余业务文本/退出码直接比较。新增单行 request_line 是受限交换，不等同于分离 send/read 或流式接口。
 
 JSON 是 moonnut 的额外输出模式，不是以上官方 CLI 的等价证据。保留扩展与是否要求精确 CLI 可替换，需要在 P0 记录。
 
@@ -199,3 +199,5 @@ English: Client scope and official CLI defaults are confirmed. X01–X08 server/
 [session-ci]: https://github.com/pangbit/moonnut/actions/runs/42984926159
 
 [control-ci]: https://github.com/pangbit/moonnut/actions/runs/42988803694
+
+[admin-ci]: https://github.com/pangbit/moonnut/actions/runs/42993115828

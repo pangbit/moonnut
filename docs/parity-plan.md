@@ -25,7 +25,8 @@ English: The approved target is full NUT **client** functionality and observable
 | PyNUT | 固定 NUT 提交中的模块 1.8.0；SHA-256 `a12d1e40f8cd926314157c137372628322dd09db94d697aca4bc9dc8beb64f82`；与原 v2.8.3 参考文件逐字节相同 |
 | moonnut audit start | `709b5deb77afb33fbee940d2f5fa8e9a2bb1427c`；当时为 11 种业务读取，默认验证 TLS |
 | Toolchain | `moonc 0.10.20+65efd5b93`、async `0.22.4`、native |
-| Current control evidence | [CI 42988803694](https://github.com/pangbit/moonnut/actions/runs/42988803694)；代码 `0e5413fe7f4ac2090c27fb491525e08279223105`：48 项原生、52 项控制结果、15 条驱动请求、8 个 tracking ID、三次官方 CLI；既有读取/会话/TLS/JSON 回归通过 |
+| Current management CLI evidence | [CI 42993115828](https://github.com/pangbit/moonnut/actions/runs/42993115828)；代码 `fbc9b9bf77987128aae3f2d280a90fb955d224c6`：49 项原生、25 个管理 CLI 场景、18 条驱动请求、7 个 ID；六行 NSS 日志排除规则及剩余差异明确保留 |
+| Previous control evidence | [CI 42988803694](https://github.com/pangbit/moonnut/actions/runs/42988803694)；代码 `0e5413fe7f4ac2090c27fb491525e08279223105`：48 项原生、52 项控制结果、15 条驱动请求、8 个 tracking ID、三次官方 CLI；既有读取/会话/TLS/JSON 回归通过 |
 | Previous session evidence | [CI 42984926159](https://github.com/pangbit/moonnut/actions/runs/42984926159)；代码 `c2527e0457a2905c610661fde1b5e341c9c95b3a`：45 个原生测试、既有 TLS/JSON/真实 upsd 对照及会话 44 项结果 × 3 种传输配置全部通过 |
 | Previous read evidence | [CI 42981570296](https://github.com/pangbit/moonnut/actions/runs/42981570296)；代码 `79c962ad323f33d7f0bf1027040ca8f34b830e4b`：38 个原生测试、20 个 JSON、10 个本库 TLS、4 个官方 upsc 传输对照场景及真实 upsd 读取对照全部通过 |
 | Previous evidence | [CI 42973210924](https://github.com/pangbit/moonnut/actions/runs/42973210924)：34 个原生测试、14 个 JSON 用例、5 个 TLS 用例及真实 upsd 虚拟设备的选定对照 |
@@ -105,7 +106,7 @@ physical effects or full client parity. No real UPS control or publication.
 ## Management CLI increment / 管理 CLI 增量
 
 新增 cmd/upsrw、cmd/upscmd；覆盖列表、写入/命令、提示、原始参数、tracking 与退出语义。
-本地 49 项原生及四项 CLI 回环检查通过；25 场景官方差分执行状态见[管理 CLI](admin-cli.md)。
+本地 49 项原生及四项 CLI 回环检查通过；25 场景官方差分已通过固定 Linux CI；实际结果见[管理 CLI](admin-cli.md)。
 NSS 后端日志、帮助身份、完整错误/超时/输入边界明确保留差异；不会把过滤日志后的比较
 称为完整 CLI 一致。监控功能与其他库能力仍在目标内，本批没有执行任何真实系统动作。
 

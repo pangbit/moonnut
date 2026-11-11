@@ -66,8 +66,11 @@ write timing and TLS-backend edge cases are not thereby declared equivalent.
 
 Local validation: **49 native tests**, including one focused single-line exchange
 and framing test, plus four loopback CLI wire/output checks. Existing TLS and
-JSON checks pass. **The new 25-case official CLI comparison is pending Linux CI
-execution until a linked result is recorded here.**
+JSON checks pass. [CI 42993115828](https://github.com/pangbit/moonnut/actions/runs/42993115828) passed for
+`fbc9b9bf77987128aae3f2d280a90fb955d224c6` on Ubuntu 26.04 with NUT `2.8.4+really-2` / NSS.
+All 25 management cases matched the stated comparison profile, including 18 driver
+requests and seven tracking IDs per implementation. The 49 native tests and all
+existing read/session/control/TLS/JSON checks also passed.
 
 [scripts/admin_cli_integration.py](../scripts/admin_cli_integration.py) reuses the
 separate in-memory control fixture. Official and MoonBit programs each run on a
@@ -130,7 +133,10 @@ upscmd 可选参数按官方原样拼接 argv；`two words` 会使 upsd 收到�
 取消关闭；不冒充完整底层发送/读取流接口。
 
 本地 49 项原生测试与四个回环 CLI 检查通过，既有 TLS/JSON 回归通过。新增 25 场景官方
-差分在记录 CI 链接前仍为待执行，不能提前标通过。双方各使用新建回环 upsd、等价初始
+差分已由 [CI 42993115828](https://github.com/pangbit/moonnut/actions/runs/42993115828) 验证通过，代码
+`fbc9b9bf77987128aae3f2d280a90fb955d224c6`；Ubuntu 26.04、NUT 2.8.4+really-2、NSS。
+双方各记录 18 条驱动请求与 7 个 tracking ID；全部既有读取/会话/控制/TLS/JSON 回归也通过。
+双方各使用新建回环 upsd、等价初始
 内存设备和假凭据，验证两类列表、SELECTED、写入、权限、三类提示、参数传递及等待结果。
 最后一项 tracked 命令确保先前驱动请求都已被消费；无真实驱动、upsmon 或关机程序。
 
@@ -146,3 +152,35 @@ CLI 等待有界 LOGOUT 回复，官方库发送后即关连接，也保留为�
 默认与用户选择一致：不验证证书的 TLS，STARTTLS 被拒绝可明文发送凭据；-p 的密码可被
 进程参数观察。库仍有显式验证 TLS，但不把它冒充官方管理 CLI 默认。所有测试仅用隔离
 模拟环境，不操作真实 UPS、不关闭宿主机、不发布 Mooncakes。
+
+## Recorded outcomes / 实际结果
+
+| Case / 场景 | Official and moonnut / 官方与本库 |
+| --- | --- |
+| Default writable list / command list | Identical ordered stdout, including descriptions and SELECTED markers |
+| upscmd username / upsrw value prompt | Identical stdout prompt; exit 0 and OK on stderr |
+| upscmd password prompt with piped fake credential | Empty stdout; stderr ends `Password: OK`; exit 0 |
+| Tracked command success | `SUCCESS` on stderr, exit 0 |
+| Driver failure / invalid argument | `ERR FAILED` / `ERR INVALID-ARGUMENT` on stderr, exit 0 |
+| upscmd Pending operation with `-t 1` | Timeout text on stderr, exit 1; one dispatch; about 1.05 s official / 1.02 s moonnut in this run |
+| upscmd `-t 0` | One dispatch, immediate timeout, exit 1; does not mean the driver failed |
+| Raw multiword argv / literal quoted multiword argv | Raw form loses the extra parameter at upsd; quoted form reaches the driver as multiple tokens and is rejected by the fixture's NUT dstate argument-count rule |
+| Final state | UPS status OL; id `a"b\c#d`; beeper disabled; range value `102tail` |
+
+Completion latency for immediately finished operations can differ because the
+first status read races the driver result; exact elapsed times are not asserted
+identical. The one-second Pending polling rule is retained, and timeout checks
+verify one dispatch. Raw observations are in the run's `isolated-control-evidence`
+artifact (`admin-cli.json`, seven-day retention).
+
+已完成操作的首次查询与驱动结果到达存在竞争，实际完成耗时不要求数字相同；仍按每秒
+轮询 Pending，并检查超时场景只派发一次。原始结果保存在该 CI 的
+isolated-control-evidence / admin-cli.json（保留七天）。六行 NSS 日志差异仍未关闭。
+
+Direct runtime coverage is program-specific: upsrw's tracked SUCCESS and value
+prompt are compared; username/password prompts and the zero/one-second/failed
+tracking cases are directly compared for upscmd. Shared implementation and source
+review are not counted as direct execution evidence for the other program.
+
+直接运行证据按程序区分：upsrw 覆盖 tracked SUCCESS 及变量值提示；用户名/密码提示、
+0/1 秒与失败等待场景直接对照的是 upscmd。共用实现及源码核对不冒充另一程序的运行证据。
