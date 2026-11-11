@@ -120,3 +120,19 @@ fn expect(
 
 ///|
 pub extend NutError with @debug.Debug::{to_repr}
+
+///|
+/// libupsclient compares echoed query tokens with strcasecmp.
+fn expect_echo(
+  tokens : Array[String],
+  wanted : Array[String],
+) -> Unit raise NutError {
+  if tokens.length() != wanted.length() {
+    raise Protocol("response does not match request")
+  }
+  for i in 0..<wanted.length() {
+    if !tokens[i].equal_ignore_ascii_case(wanted[i]) {
+      raise Protocol("response does not match request")
+    }
+  }
+}

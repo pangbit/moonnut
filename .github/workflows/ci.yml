@@ -14,13 +14,16 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y build-essential libssl-dev zlib1g-dev libnss3-tools \
             nut-server=2.8.4+really-2 nut-client=2.8.4+really-2 \
-            libupsclient7=2.8.4+really-2 libnutscan4=2.8.4+really-2
-          dpkg-query -W nut-server nut-client libupsclient7 libnutscan4
+            libupsclient7=2.8.4+really-2 libupsclient-dev=2.8.4+really-2 libnutscan4=2.8.4+really-2
+          dpkg-query -W nut-server nut-client libupsclient7 libupsclient-dev libnutscan4
+          uname -sm
+          sha256sum /usr/bin/upsc /usr/bin/upsrw /usr/bin/upscmd
+          ldd /usr/bin/upsc
       - name: Fetch pinned external PyNUT reference
         run: |
           mkdir -p "$RUNNER_TEMP/moonnut-reference"
           curl -fsSL --retry 2 \
-            https://raw.githubusercontent.com/networkupstools/nut/c0acf09af3be41752abad90a19a11a26c9256b28/scripts/python/module/PyNUT.py.in \
+            https://raw.githubusercontent.com/networkupstools/nut/541c2ecf0b2ec33dadb9f40b16acbe39042bd103/scripts/python/module/PyNUT.py.in \
             -o "$RUNNER_TEMP/moonnut-reference/PyNUT.py"
           echo "a12d1e40f8cd926314157c137372628322dd09db94d697aca4bc9dc8beb64f82  $RUNNER_TEMP/moonnut-reference/PyNUT.py" | sha256sum --check
       - name: Install verified MoonBit version
@@ -36,7 +39,8 @@ jobs:
           moon build --target native
           python3 scripts/tls_smoke.py
           python3 scripts/cli_json_smoke.py
-          python3 scripts/upsd_integration.py --pynut "$RUNNER_TEMP/moonnut-reference/PyNUT.py"
+          cc -Wall -Wextra -Werror scripts/nut_reference.c -lupsclient -o "$RUNNER_TEMP/moonnut-reference/nut-reference"
+          python3 scripts/upsd_integration.py --pynut "$RUNNER_TEMP/moonnut-reference/PyNUT.py" --nut-reference "$RUNNER_TEMP/moonnut-reference/nut-reference"
           moon info --target native
           moon fmt --check
           git diff --exit-code -- '*.mbti' '*.mbt' moon.mod moon.pkg

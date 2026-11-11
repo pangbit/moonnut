@@ -3,7 +3,8 @@
 [English](README.mbt.md)
 
 面向 **MoonBit native** 的小型 NUT upsd 客户端，独立实现、个人维护、
-Apache-2.0 开源，刻意保持只读。库运行时不依赖 NUT 可执行文件或 Python。
+Apache-2.0 开源，当前 API 仍为只读。最终目标为完整 NUT 客户端能力，不实现服务端或 UPS 驱动。
+详见[分阶段计划](docs/parity-plan.md)与[逐项验收矩阵](docs/parity-matrix.md)。库运行时不依赖 NUT 或 Python。
 
 GitHub main 包含未发布的演示改进。Mooncakes 由维护者手动发布，已有 0.1.0 版本保持不变。
 
@@ -12,10 +13,12 @@ GitHub main 包含未发布的演示改进。Mooncakes 由维护者手动发布�
 - `LIST UPS`、`LIST VAR`、`GET VAR`，返回设备和变量结构。
 - `GET UPSDESC`、`GET DESC`、`GET TYPE`，读取描述及原始类型元信息。
 - `LIST RW` / `ENUM` / `RANGE`、`LIST CMD`、`GET CMDDESC`，只读发现变量选项、范围和命令。
-- 默认使用 STARTTLS，验证证书链及主机名，可用系统根证书或指定 PEM CA 文件。
-- 可选提交 `USERNAME` / `PASSWORD`，只在 TLS 验证成功后发送。
-- 每次查询独立连接，不共享协议流，不做连接池、自动重试或 TLS 降级。
-- 整个操作的超时、单行长度、响应总字节数、列表行数均有限制。
+- `GET NUMLOGINS`、`LIST CLIENT`、`VER`、`NETVER`、`PROTVER`、`HELP`。
+- 默认与官方 CLI 一致：尝试不验证证书的 TLS，STARTTLS 被拒绝时允许明文。
+- 显式验证 TLS 可用系统根证书或指定 PEM CA 文件。
+- 可选成对提交 `USERNAME` / `PASSWORD`，与官方客户端一样允许明文。
+- 每次查询独立连接，不共享协议流，不做连接池或自动重试。
+- 分别设置连接和读取超时，整体截止时间可选；保留行长、响应字节和行数限制。
 - 支持 NUT 引号和转义规则，校验响应标识及列表边界。
 
 **不提供** `FSD`、`SET VAR`、`INSTCMD`、`LOGIN`、`PRIMARY`/`MASTER`、关机或
@@ -52,7 +55,7 @@ moon run examples/parse --target native
 原生异步应用中创建 `Client::new("ups.example.invalid")`，然后调用
 `list_ups()`、`list_vars("demo")`、`get_var("demo", "ups.status")`。
 变量值保留为字符串，例如 `OL CHRG` 不能当成单一枚举值。
-每次操作独立建立连接，可选在验证过的 TLS 中提交凭据，然后关闭连接，失败也会关闭。
+每次操作独立建立连接，可选按所选传输策略提交凭据，然后关闭连接，失败也会关闭。
 
 ```sh
 # 仅针对已授权且明确指定的服务器
@@ -109,6 +112,8 @@ moon run examples/query --target native -- ups.example.invalid 3493 --get demo u
 {"ups":"demo","name":"ups.status","value":"OL CHRG"}
 ```
 
+六项新增读取 API 与 CLI 参数见[服务端信息查询](docs/server-info.md)。
+
 ## API 约定
 
 `Client::new` 参数：
@@ -116,17 +121,21 @@ moon run examples/query --target native -- ups.example.invalid 3493 --get demo u
 | 参数 | 默认值 | 含义 |
 | --- | --- | --- |
 | `port` | `3493` | TCP 端口 |
-| `security` | `Tls` | 系统根证书；`TlsCaFile(path)` 使用自定义 CA |
-| `username`、`password` | 无 | 成对提供，仅允许 TLS |
-| `timeout_ms` | `5000` | 从 DNS 到完整响应的总超时 |
+| `security` | `TryTls` | 尝试不验证证书的 TLS，STARTTLS 拒绝后明文 |
+| `username`、`password` | 无 | 成对提供，可能明文发送 |
+| `connect_timeout_ms` | `10000` | DNS 与连接截止时间 |
+| `read_timeout_ms` | `5000` | 每次传输读取，也用于 TLS 握手 |
+| `timeout_ms` | 无 | 可选的 DNS 至完整响应总截止时间 |
 | `max_line_bytes` | `65536` | 一行 LF 分隔符之前的最大字节数 |
 | `max_response_bytes` | `4194304` | 含认证响应的协议总接收字节数 |
 | `max_rows` | `4096` | 列表最大行数 |
 
-`Plaintext` 必须显式指定，且禁止携带凭据。明文既无保密性也无服务端认证，
-仅用于受控测试或另有安全保障的通道。没有跳过证书验证的设置；STARTTLS 被拒绝时
-绝不会回退到明文。TLS 最低版本与算法策略继承底层 TLS 库，当前 moonnut
-不额外强制 TLS 1.2/1.3 最低版本。
+`TryTls` 与 NUT 2.8.4 官方 CLI 传输策略一致：不验证服务端身份，STARTTLS 被拒绝时
+允许明文凭据和查询；握手失败或传输错误不会回退或重试。选择 `Tls`（`--tls`）或
+`TlsCaFile(path)`（`--ca FILE`）可强制验证证书及主机名。`TlsUnverified`
+（`--tls-unverified`）强制加密但不验证证书；`Plaintext`（`--plaintext`）跳过 STARTTLS。
+这改变此前未发布 main 的默认值，已发布 0.1.0 不变。TLS 版本/算法沿用底层库。
+连接/读取默认秒数已按 C CLI 常量调整，但 DNS/地址重试、后端计时、资源上限等仍待逐项对照。
 
 `NutError` 区分非法参数、错误响应格式、规范的服务端错误码、资源超限和提前 EOF。
 网络、TLS、超时错误保留 `moonbitlang/async` 错误。失败后由应用决定是否及何时重试。
@@ -138,12 +147,12 @@ moon run examples/query --target native -- ups.example.invalid 3493 --get demo u
 - [NUT 网络协议文档](https://networkupstools.org/docs/developer-guide.chunked/net-protocol.html)：
   实际 `upsd` 行为及与 RFC 的差异。
 - [Network UPS Tools](https://github.com/networkupstools/nut) 与
-  [PyNUT v2.8.3](https://github.com/networkupstools/nut/blob/v2.8.3/scripts/python/module/PyNUT.py.in)：
+  [PyNUT v2.8.4](https://github.com/networkupstools/nut/blob/v2.8.4/scripts/python/module/PyNUT.py.in)：
   参考项目，不是嵌入式依赖。
 
 RFC 9271 描述强制认证，但历史 NUT 部署允许匿名只读查询。moonnut 允许匿名查询，
 遵守 `ERR ACCESS-DENIED`，不宣称符合 RFC 的全部安全要求。
-不依赖 `PROTVER`、`PRIMARY` 等新别名。
+`get_protocol_version()` 显式支持 `PROTVER` 别名；其他读取不依赖它。
 
 **凭据接收确认不是认证证明。** NUT 的 `PASSWORD` 命令只是保存密码，供后续需要授权
 的命令使用。服务端可能对错误密码返回 `OK`，随后仍允许匿名只读查询，NUT 2.8.4
@@ -174,7 +183,7 @@ python3 scripts/cli_json_smoke.py
 python3 scripts/upsd_integration.py
 moon info --target native
 moon fmt --check
-# 可选：官方 PyNUT v2.8.3 模块须放在本仓库之外
+# 可选：官方 PyNUT v2.8.4 模块须放在本仓库之外
 python3 scripts/reference_smoke.py /external/path/PyNUT.py
 # 隔离 Linux 上，使用固定模块与 upsc 对照同一真实守护进程
 python3 scripts/upsd_integration.py --pynut /external/path/PyNUT.py

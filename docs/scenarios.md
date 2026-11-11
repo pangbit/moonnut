@@ -116,11 +116,10 @@ moon run examples/query --target native -- ups.example.invalid 3493 --vars demo 
 moon run examples/query --target native -- ups.example.invalid 3493 --get demo ups.status --json
 ```
 
-TLS verification is the default. Add `--ca /path/to/ca.pem` for an application-managed
-CA. Optional paired credentials come from `MOONNUT_USERNAME` and `MOONNUT_PASSWORD`
+The default follows NUT CLI TRYSSL and can use plaintext. Add `--tls` for verified
+TLS or `--ca /path/to/ca.pem` for an application-managed CA. Optional paired credentials come from `MOONNUT_USERNAME` and `MOONNUT_PASSWORD`
 through a trusted launcher, never from committed files or command arguments.
-Each query owns and closes its connection; no automatic retries or TLS downgrade
-occur. Successful reads do not prove credential validity: NUT may allow anonymous
+Each query owns and closes its connection; no automatic retries occur. STARTTLS refusal permits plaintext in the default mode. Successful reads do not prove credential validity: NUT may allow anonymous
 reads after acknowledging an incorrect password. These examples do not verify
 physical UPS behavior, real power loss, production policy or all NUT TLS builds.
 
@@ -189,9 +188,9 @@ JSON 结果见英文场景 2。
 ### 换成已授权部署
 
 英文部分的三条 `.invalid` 命令是模板，不是可直接连接的公共测试地址。替换为
-明确授权的服务器，`demo` 替换为发现结果中的标识。默认验证 TLS；自有 CA 可用
+明确授权的服务器，`demo` 替换为发现结果中的标识。默认尝试不验证证书的 TLS，拒绝后允许明文；强制验证可用 `--tls`，自有 CA 可用
 `--ca /path/to/ca.pem`。可选凭据通过可信启动器提供成对环境变量
 `MOONNUT_USERNAME`、`MOONNUT_PASSWORD`，不要写入提交文件或命令参数。
-每次查询独立连接并关闭，不自动重试或降级。NUT 可能在接受错误密码后仍允许匿名读，
+每次查询独立连接并关闭，不自动重试；默认允许 STARTTLS 拒绝后明文。NUT 可能在接受错误密码后仍允许匿名读，
 所以读成功不证明凭据有效。上述验证不代表物理 UPS、真实掉电、生产策略或所有
 NUT TLS 构建均已通过。

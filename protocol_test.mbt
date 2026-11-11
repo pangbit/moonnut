@@ -53,22 +53,15 @@ test "reject incomplete and injected lines" {
 }
 
 ///|
-test "credentials never enter a plaintext client" {
-  let rejected = try {
-    ignore(
-      @moonnut.Client::new(
-        "localhost",
-        security=@moonnut.Plaintext,
-        username="fixture",
-        password="fixture",
-      ),
-    )
-    false
-  } catch {
-    @moonnut.NutError::InvalidArgument(_) => true
-    err => raise err
-  }
-  assert_true(rejected)
+test "plaintext credentials follow NUT compatibility policy" {
+  ignore(
+    @moonnut.Client::new(
+      "localhost",
+      security=@moonnut.Plaintext,
+      username="fixture",
+      password="fixture",
+    ),
+  )
 }
 
 ///|

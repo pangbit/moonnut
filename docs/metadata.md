@@ -28,7 +28,7 @@ the caller's authorization. No write method is added.
 See [capability discovery](discovery.md) for explicit ENUM/RANGE and command reads.
 
 ```sh
-# Only use a server you are authorized to query. Verified TLS is the default.
+# Only use a server you are authorized to query. Use --tls to require verified TLS.
 moon run examples/query --target native -- ups.example.invalid 3493 --ups-desc demo --json
 moon run examples/query --target native -- ups.example.invalid 3493 --desc demo ups.model --json
 moon run examples/query --target native -- ups.example.invalid 3493 --type demo ups.model --json
@@ -98,7 +98,7 @@ NUT 协议规定省略类型时默认为数值。未知标记原样保留，不�
 不代表本客户端可写，也不代表调用者获得写入授权。没有新增写接口。
 显式读取 ENUM/RANGE 及命令的接口见[只读能力发现](discovery.md#中文)。
 
-上方三条查询命令分别演示 UPS 描述、变量描述、变量类型及 JSON 输出，默认验证 TLS，
+上方三条查询命令分别演示 UPS 描述、变量描述、变量类型及 JSON 输出，可加 `--tls` 强制验证 TLS，
 仅可针对已授权的服务器执行。类型 JSON 含 `ups`、`name`、`types` 字段，示例值
 不是任何真实设备的读数。
 

@@ -91,7 +91,16 @@ def main():
              {"ups": "demo", "command": "load.off", "description": "Turn off the load immediately"})
     run_case(b"LIST UPS\n", "BEGIN LIST UPS\nEND LIST UPS\n", [], [])
     run_case(b"LIST UPS\n", "ERR ACCESS-DENIED\n", [], success=False)
-    print("CLI JSON smoke: escaped UTF-8, lists, scalar read, metadata, discovery, empty result and failure exit passed (14 cases)")
+    run_case(b'GET NUMLOGINS "demo"\n', 'NUMLOGINS demo 0\n',
+             ["--num-logins", "demo"], {"ups": "demo", "num_logins": 0})
+    run_case(b'LIST CLIENT "demo"\n',
+             'BEGIN LIST CLIENT demo\nCLIENT demo ::1\nCLIENT demo ::1\nEND LIST CLIENT demo\n',
+             ["--clients", "demo"], ["::1", "::1"])
+    for command, flag, value in [("VER", "server-version", 'Network UPS Tools  upsd "2.8.4" # fixture'),
+                                  ("NETVER", "net-version", "1.3"), ("PROTVER", "protocol-version", "1.3"),
+                                  ("HELP", "server-help", "Commands: HELP VER")]:
+        run_case((command + "\n").encode(), value + "\n", ["--" + flag], value)
+    print("CLI JSON smoke: escaped UTF-8, lists, scalar read, metadata, discovery, empty result and failure exit passed (20 cases)")
 
 
 if __name__ == "__main__":

@@ -26,10 +26,10 @@ validate an intended write, or infer safety/authorization from metadata.
 Every list validates its exact BEGIN/END identity and its command-specific rows:
 `RW ups variable value`, `ENUM ups variable value`, `RANGE ups variable min max`,
 and `CMD ups command`. Empty lists are valid; unknown UPS/variable/command,
-`NOT-ENUM`, `NOT-RANGE` and access errors are propagated rather than converted
-to empty results. A list is returned only after the matching END line.
-Descriptions may be localized or `Unavailable`; use command names as identifiers.
-Each call uses the same verified TLS default, fresh connection, timeout, row,
+`NOT-ENUM`, `NOT-RANGE` and access errors, if sent, are propagated. NUT 2.8.4
+returns an empty ENUM/RANGE list for an existing variable without those metadata. A list is returned only after the matching END line.
+Descriptions may be localized or `Description unavailable`; use command names as identifiers.
+Each call uses the NUT CLI TRYSSL default, fresh connection, timeouts, row,
 line and byte limits as existing reads. Multiple calls are not an atomic snapshot.
 
 ### Example
@@ -102,9 +102,9 @@ Protocol references: [NUT network protocol](https://networkupstools.org/docs/dev
 
 列表按各命令的确切行格式与请求标识校验，包括 BEGIN/END。RW 为变量+值、ENUM 为
 单候选值、RANGE 为两个端点、CMD 为单命令名。空列表有效；未知 UPS/变量/命令、
-`NOT-ENUM`、`NOT-RANGE` 和访问错误不会伪装成空列表。收到匹配 END 前不返回部分
-结果。描述可能是本地化文字或 `Unavailable`，应使用命令名作为标识。
-每次查询沿用默认验证 TLS、独立连接、整体超时、行数/行长/总字节限制；多次读取不是
+`NOT-ENUM`、`NOT-RANGE` 和访问错误若由服务端返回则原样传播；NUT 2.8.4 对已知但无相应元信息的变量返回空 ENUM/RANGE 列表。收到匹配 END 前不返回部分
+结果。描述可能是本地化文字或 `Description unavailable`，应使用命令名作为标识。
+每次查询沿用官方 TRYSSL 默认、独立连接、连接/读取超时、行数/行长/总字节限制；多次读取不是
 原子快照。即使命令叫 `load.off`，上方示例也只读其名称和描述。
 
 上方五条命令均支持 JSON。`--rw` 返回 `{name,value}` 对象数组；`--enum` 返回

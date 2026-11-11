@@ -7,6 +7,7 @@ An ephemeral CA/certificate/key is created in the OS temporary directory.
 import os
 from pathlib import Path
 import socket
+import shutil
 import ssl
 import subprocess
 import tempfile
@@ -29,7 +30,7 @@ def line(sock):
     return bytes(result)
 
 
-def run_case(context, *, host, ca=None, auth=False, success=True, reject_credentials=False):
+def run_case(context, *, host, ca=None, auth=False, success=True, reject_credentials=False, verify=False, upsc=None):
     errors = []
     commands = []
     listener = socket.socket()
@@ -75,20 +76,78 @@ def run_case(context, *, host, ca=None, auth=False, success=True, reject_credent
     if auth:
         env.update(MOONNUT_USERNAME="fixture-user", MOONNUT_PASSWORD="fixture-only")
     args = [str(BINARY), host, str(port)]
-    if ca:
+    if upsc:
+        args = [upsc, "-L", f"{host}:{port}"]
+    elif ca:
         args += ["--ca", str(ca)]
+    elif verify:
+        args += ["--tls"]
     proc = subprocess.run(args, capture_output=True, text=True, env=env, timeout=10)
     worker.join(9)
     assert not worker.is_alive(), "fixture did not terminate"
     assert not errors, repr(errors)
     assert (proc.returncode == 0) == success, proc.stdout + proc.stderr
     if success:
-        assert proc.stdout.strip() == "demo\tTest UPS", repr(proc.stdout)
+        assert proc.stdout.strip() == ("demo: Test UPS" if upsc else "demo\tTest UPS"), repr(proc.stdout)
     elif reject_credentials:
         assert commands == [b"STARTTLS\n", b'USERNAME "fixture-user"\n',
                             b'PASSWORD "fixture-only"\n'], "query sent after credential rejection"
     else:
         assert commands == [b"STARTTLS\n"], "query or credentials sent before trust verification"
+
+
+def run_negotiation_case(reply, *, auth=False, verify=False, success=True, upsc=None):
+    """Check downgrade only on a negative STARTTLS response, never handshake failure."""
+    listener = socket.socket()
+    listener.bind(("127.0.0.1", 0))
+    listener.listen(1)
+    listener.settimeout(8)
+    port = listener.getsockname()[1]
+    errors, commands = [], []
+
+    def serve():
+        try:
+            with listener:
+                conn, _ = listener.accept()
+                with conn:
+                    conn.settimeout(5)
+                    commands.append(line(conn))
+                    assert commands[-1] == b"STARTTLS\n"
+                    conn.sendall(reply)
+                    if reply.startswith(b"OK STARTTLS"):
+                        # Invalid TLS record forces a failed handshake. No reconnect.
+                        conn.sendall(b"not TLS\n")
+                        return
+                    if not success:
+                        assert conn.recv(1024) in (b"", b"LOGOUT\n")
+                        return
+                    if auth:
+                        for command in (b'USERNAME "fixture-user"\n', b'PASSWORD "fixture-only"\n'):
+                            commands.append(line(conn))
+                            assert commands[-1] == command
+                            conn.sendall(b"OK\n")
+                    commands.append(line(conn))
+                    assert commands[-1] == b"LIST UPS\n"
+                    conn.sendall(REPLY)
+        except Exception as error:
+            errors.append(error)
+
+    worker = threading.Thread(target=serve, daemon=True)
+    worker.start()
+    env = {k: v for k, v in os.environ.items() if not k.startswith("MOONNUT_")}
+    if auth:
+        env.update(MOONNUT_USERNAME="fixture-user", MOONNUT_PASSWORD="fixture-only")
+    args = [upsc, "-L", f"127.0.0.1:{port}"] if upsc else [str(BINARY), "127.0.0.1", str(port)]
+    if verify:
+        args += ["--tls"]
+    proc = subprocess.run(args, env=env, capture_output=True, text=True, timeout=10)
+    worker.join(9)
+    assert not worker.is_alive() and not errors, repr(errors)
+    assert (proc.returncode == 0) == success, proc.stdout + proc.stderr
+    if success:
+        assert proc.stdout.strip() == ("demo: Test UPS" if upsc else "demo\tTest UPS")
+    else:
+        assert commands == [b"STARTTLS\n"]
 
 
 def main():
@@ -107,9 +166,24 @@ def main():
         run_case(context, host="localhost", ca=cert)
         run_case(context, host="localhost", ca=cert, auth=True)
         run_case(context, host="localhost", ca=cert, auth=True, reject_credentials=True, success=False)
-        run_case(context, host="localhost", auth=True, success=False)
+        run_case(context, host="localhost", auth=True, success=False, verify=True)
         run_case(context, host="127.0.0.1", ca=cert, auth=True, success=False)
-    print("TLS smoke: trusted CA, encrypted credentials, server rejection, untrusted CA, wrong hostname passed (5 cases)")
+        run_case(context, host="127.0.0.1", auth=True)
+        upsc = shutil.which("upsc")
+        if upsc:
+            run_case(context, host="127.0.0.1", upsc=upsc)
+    for refusal in (b"ERR FEATURE-NOT-SUPPORTED\n", b"ERR UNKNOWN-COMMAND\n"):
+        run_negotiation_case(refusal, auth=True)
+        if upsc:
+            run_negotiation_case(refusal, upsc=upsc)
+    run_negotiation_case(b"ERR FEATURE-NOT-SUPPORTED\n", verify=True, success=False)
+    run_negotiation_case(b"OK STARTTLS\n", success=False)
+    if upsc:
+        run_negotiation_case(b"OK STARTTLS\n", upsc=upsc, success=False)
+        print("Default transport differential: untrusted/wrong-host TLS, two STARTTLS refusals and failed handshake match official upsc")
+    else:
+        print("Official upsc transport differential: not run (upsc is unavailable)")
+    print("TLS smoke: verified trust/auth/rejection, default unverified TLS, plaintext fallback/auth, required TLS and handshake failure passed (10 moonnut cases)")
 
 
 if __name__ == "__main__":

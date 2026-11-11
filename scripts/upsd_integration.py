@@ -132,7 +132,7 @@ def validate_pynut(path):
     if ROOT == path or ROOT in path.parents:
         raise RuntimeError("Keep the GPL reference outside this repository")
     if hashlib.sha256(path.read_bytes()).hexdigest() != PYNUT_SHA256:
-        raise RuntimeError("Expected the unmodified official PyNUT v2.8.3 reference")
+        raise RuntimeError("Expected the unmodified official PyNUT v2.8.4 reference")
     return path
 
 
@@ -147,7 +147,9 @@ def text(value):
     return value.decode('utf-8') if isinstance(value,bytes) else value
 def mapping(values):
     return {text(k):text(v) for k,v in values.items()}
-result={'ups':mapping(client.GetUPSList()),'variables':mapping(client.GetUPSVars('demo'))}
+result={'ups':mapping(client.GetUPSList()),'variables':mapping(client.GetUPSVars('demo')),
+        'help':text(client.help()).removesuffix('\\n'),'ver':text(client.ver()).removesuffix('\\n'),
+        'clients':{text(k):[text(v) for v in values] for k,values in client.ListClients('demo').items()}}
 try:
     client.GetUPSVars('missing')
 except module.PyNUTError as error:
@@ -217,8 +219,9 @@ def configure_tls(folder, upsd):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--nut-reference", type=Path, help="compiled read-only libupsclient probe")
     parser.add_argument("--pynut", type=validate_pynut,
-                        help="External official PyNUT v2.8.3 module (SHA-256 verified)")
+                        help="External official PyNUT v2.8.4 module (SHA-256 verified)")
     args = parser.parse_args()
     if os.geteuid() == 0:
         raise RuntimeError("Run as a regular user, not root")
@@ -237,7 +240,7 @@ def main():
         banner = (version.stdout + version.stderr).strip().splitlines()[0]
         print(Path(program).name + ": " + banner, flush=True)
     if args.pynut:
-        print("PyNUT: NUT v2.8.3 / module 1.8.0 / SHA-256 " + PYNUT_SHA256, flush=True)
+        print("PyNUT: NUT v2.8.4 / module 1.8.0 / SHA-256 " + PYNUT_SHA256, flush=True)
     # The temporary listen reservation is released immediately before upsd starts.
     reservation = socket.socket()
     reservation.bind(("127.0.0.1", 0))
@@ -403,8 +406,37 @@ def main():
                     assert failed.returncode != 0 and baseline.returncode != 0
                     assert message.lower() in baseline.stderr.lower(), baseline.stderr
                 print("PASS: unknown UPS and unknown variable fail in moonnut and upsc (not error-text equivalence)")
+                # Read-only additions: counts are LOGIN clients, not TCP connections.
+                assert json.loads(query("--num-logins", "demo", "--json"))["num_logins"] == 0
+                clients = json.loads(query("--clients", "demo", "--json"))
+                c_clients = run([upsc, "-c", "demo@" + endpoint], env)
+                assert c_clients.returncode == 0 and clients == c_clients.stdout.splitlines() == []
+                if args.nut_reference:
+                    for command, flag in (("NUMLOGINS", "num-logins"), ("VER", "server-version"),
+                                          ("NETVER", "net-version"), ("PROTVER", "protocol-version"),
+                                          ("HELP", "server-help")):
+                        official = run([str(args.nut_reference), "127.0.0.1", str(port), command], env)
+                        options = ["--" + flag] + (["demo"] if command == "NUMLOGINS" else [])
+                        assert official.returncode == 0
+                        assert query(*options) == official.stdout.removesuffix("\n"), command
+                    print("PASS: NUMLOGINS, VER, NETVER, PROTVER and HELP match official libupsclient; LIST CLIENT matches upsc -c")
+                else:
+                    print("libupsclient differential for server reads: not run (provide --nut-reference)")
+                for name in ("server.info", "server.version"):
+                    official = run([upsc, "unused@" + endpoint, name.upper()], env)
+                    assert official.returncode == 0
+                    assert json.loads(query("--get", "unused", name.upper(), "--json"))["value"] == official.stdout.removesuffix("\n")
+                assert json.loads(query("--enum", "metadata", "input.transfer.low", "--json"))["values"] == []
+                assert json.loads(query("--range", "metadata", "ups.beeper.status", "--json"))["ranges"] == []
+                assert json.loads(query("--desc", "metadata", "missing.variable", "--json"))["description"] == "Description unavailable"
+                assert json.loads(query("--cmd-desc", "metadata", "missing.command", "--json"))["description"] == "Description unavailable"
+                print("PASS: canonical server.* replies match upsc; real upsd empty ENUM/RANGE and unavailable descriptions verified")
                 if args.pynut:
                     python_reference = pynut_results(args.pynut, port, env)
+                    assert python_reference["help"] == query("--server-help")
+                    assert python_reference["ver"] == query("--server-version")
+                    assert python_reference["clients"].get("demo", []) == clients
+                    print("PASS: HELP, VER and empty client list match PyNUT public methods")
                     assert python_reference["ups"] == devices
                     assert python_reference["variables"] == variables, {
                         name: (variables.get(name), python_reference["variables"].get(name))
@@ -437,12 +469,14 @@ def main():
                     print("NUT permits read-only queries after a wrong password; credentials are not proven valid")
                 else:
                     print("This NUT policy rejects the supplied incorrect credentials")
-                untrusted = run([str(BINARY), "localhost", str(port)], auth_env)
+                compatible = run([str(BINARY), "127.0.0.1", str(port)], auth_env)
+                assert compatible.returncode == 0, "default unverified TLS differs from NUT CLI"
+                untrusted = run([str(BINARY), "localhost", str(port), "--tls"], auth_env)
                 assert untrusted.returncode != 0, "untrusted NUT certificate was accepted"
                 wrong_host = run([str(BINARY), "127.0.0.1", str(port), "--ca", str(cert)], auth_env)
                 assert wrong_host.returncode != 0, "NUT certificate hostname mismatch was accepted"
                 print(f"NUT {backend} STARTTLS: credentialed reads and certificate rejection passed")
-                print("Transport scope: loopback plaintext and verified TLS with credentials; no physical device")
+                print("Transport scope: loopback plaintext, default unverified TLS and verified TLS with credentials; no physical device")
             except Exception:
                 log.flush()
                 log.seek(0)

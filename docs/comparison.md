@@ -10,8 +10,8 @@ The library stays independent of NUT executables and Python; only tests need the
 
 - CI: Ubuntu 26.04, NUT server/client/libraries `2.8.4+really-2` (NSS TLS build).
 - MoonBit: `moonc` `0.10.20+65efd5b93`, async `0.22.4`.
-- Official [PyNUT from NUT v2.8.3](https://github.com/networkupstools/nut/blob/c0acf09af3be41752abad90a19a11a26c9256b28/scripts/python/module/PyNUT.py.in),
-  module 1.8.0, commit `c0acf09af3be41752abad90a19a11a26c9256b28`.
+- Official [PyNUT from NUT v2.8.4](https://github.com/networkupstools/nut/blob/541c2ecf0b2ec33dadb9f40b16acbe39042bd103/scripts/python/module/PyNUT.py.in),
+  module 1.8.0, commit `541c2ecf0b2ec33dadb9f40b16acbe39042bd103`.
 - PyNUT SHA-256: `a12d1e40f8cd926314157c137372628322dd09db94d697aca4bc9dc8beb64f82`.
 
 The same temporary `upsd` + `dummy-ups` instance serves all clients on loopback.
@@ -35,6 +35,8 @@ but do not coerce values to numbers or silently repair parsing differences.
 | Four selected scalar values | Direct `GET VAR` comparison | Same values via the full map; no direct GET API |
 | Unknown UPS | Both fail | `GetUPSVars` raises `ERR UNKNOWN-UPS` |
 | Unknown variable | Both fail | No direct GET API; not tested |
+| NUMLOGINS, VER, NETVER, PROTVER, HELP | Original read-only adapter calls installed libupsclient | HELP/VER public methods |
+| Empty LOGIN client list | `LIST CLIENT` matches `upsc -c` | `ListClients` |
 | STARTTLS, credentials, invalid CA/hostname | moonnut tested against actual upsd separately | No native STARTTLS API; not tested |
 
 Metadata comparisons use `ups.model` and `battery.charge`; they cover actual
@@ -44,35 +46,38 @@ See [discovery scope](discovery.md). `upsrw` is called
 only with `-l`, without write options or credentials. See [metadata examples](metadata.md).
 
 The CLI redacts errors, so failed-query checks assert failure rather than equal
-exception classes or error text. TLS checks are **not** a three-client security
-comparison. NUT can acknowledge an incorrect password and still permit anonymous
+exception classes or error text. The TLS loopback script additionally compares
+moonnut and upsc defaults for an untrusted/wrong-host certificate, STARTTLS refusals
+and failed handshake. This is not a three-client security comparison. NUT can acknowledge an incorrect password and still permit anonymous
 reads; successful reads do not prove the supplied credentials are valid.
-PyNUT features outside moonnut's read-only scope are not exercised or scored.
+Unimplemented PyNUT client capabilities remain open in the [acceptance matrix](parity-matrix.md).
 Malformed replies and lifecycle bounds remain separate synthetic tests.
 
 ### Reproduce
 
 Use a disposable Linux environment with the above NUT packages, OpenSSL,
-`libnss3-tools`, Python 3.9+, and MoonBit installed. Build the project, then:
+`libnss3-tools`, `libupsclient-dev`, a C compiler, Python 3.9+, and MoonBit installed. Build the project, then:
 
 ```sh
 reference_dir=$(mktemp -d)
 curl -fsSL \
-  https://raw.githubusercontent.com/networkupstools/nut/c0acf09af3be41752abad90a19a11a26c9256b28/scripts/python/module/PyNUT.py.in \
+  https://raw.githubusercontent.com/networkupstools/nut/541c2ecf0b2ec33dadb9f40b16acbe39042bd103/scripts/python/module/PyNUT.py.in \
   -o "$reference_dir/PyNUT.py"
 moon build --target native
-python3 scripts/upsd_integration.py --pynut "$reference_dir/PyNUT.py"
+cc -Wall -Wextra -Werror scripts/nut_reference.c -lupsclient -o "$reference_dir/nut-reference"
+python3 scripts/upsd_integration.py --pynut "$reference_dir/PyNUT.py" --nut-reference "$reference_dir/nut-reference"
 ```
 
 The script checks the reference hash **before execution**. Run as a regular user;
 no service-manager commands, system NUT configuration or real drivers are used.
 Only its child processes and temporary configuration are cleaned up. The downloaded
 reference remains in the chosen external directory for inspection. It is GPL-3.0-or-later,
-not vendored, translated or linked into the Apache-2.0 library. Omit `--pynut` for
+not vendored, translated or linked into the Apache-2.0 library. The original C
+test adapter links the separately installed libupsclient only in the test process. Omit `--pynut` for
 the official CLI-only run; the log explicitly reports that PyNUT was not run.
 
 [CI](https://github.com/pangbit/moonnut/actions/workflows/ci.yml) prints tool versions,
-the reference hash, case outcomes and the actual TLS backend. A missing pinned
+the reference hash, CLI binary hashes, architecture, case outcomes and the actual TLS backend. A missing pinned
 package/hash fails instead of silently using a newer reference. Dependency pins
 are a reproducible test baseline, not a recommendation for production updates.
 
@@ -82,7 +87,7 @@ are a reproducible test baseline, not a recommendation for production updates.
 性能排名。库本身仍不依赖 NUT 可执行文件及 Python，仅对照测试需要这些工具。
 
 固定基线为 Ubuntu 26.04、NUT `2.8.4+really-2`（NSS 后端）、上文所列 MoonBit
-与 async 版本，以及官方 NUT v2.8.3 中的 PyNUT 1.8.0。PyNUT 的完整提交与 SHA-256
+与 async 版本，以及官方 NUT v2.8.4 中的 PyNUT 1.8.0。PyNUT 的完整提交与 SHA-256
 列于上文，执行前必须核验。所有客户端读取同一个仅绑定回环地址的临时
 `upsd + dummy-ups`，数据为静态合成设备：包含多词型号/状态和数字字符串。
 即使使用 `dummy-once`，驱动每轮也会更新 `driver.state`。临时夹具将轮询间隔设为
@@ -102,6 +107,8 @@ are a reproducible test baseline, not a recommendation for production updates.
 | 四个选定变量 | 直接 `GET VAR` 对照 | 从完整列表核对值，不提供直接 GET API |
 | 未知 UPS | 均失败 | `GetUPSVars` 抛出 `ERR UNKNOWN-UPS` |
 | 未知变量 | 均失败 | 不提供直接 GET API，不测此项 |
+| NUMLOGINS、VER、NETVER、PROTVER、HELP | 原创只读适配器调用已安装 libupsclient 对照 | HELP/VER 公共方法 |
+| 空 LOGIN 客户端列表 | 与 upsc -c 对照 | ListClients |
 | STARTTLS、凭据、未知 CA/错误主机名 | 另行验证 moonnut 与真实 upsd | 不提供原生 STARTTLS API，不测此项 |
 
 元信息对照选择 `ups.model` 与 `battery.charge`，覆盖真实字符串/数值类型，
@@ -110,7 +117,7 @@ ENUM/双区间 RANGE 另用连接到真实 upsd 的合成 Unix socket 驱动状�
 示例与语义说明见[描述、类型与状态](metadata.md#中文)。
 
 CLI 主动脱敏错误，因此比较“失败”结果而非异常类型或报错文本等价。TLS 检查不是
-三方安全性比较。NUT 即使收到错误密码也可能允许匿名读取，读成功不能证明凭据有效。
+三方安全性比较；回环脚本另将默认不验证证书、STARTTLS 拒绝回退和握手失败与 upsc 直接对照。NUT 即使收到错误密码也可能允许匿名读取，读成功不能证明凭据有效。
 不测试或评分超出 moonnut 只读范围的 PyNUT 功能；畸形响应和生命周期边界保留在
 独立合成测试中。未验证物理驱动、真实掉电、电池行为、所有 TLS 后端或生产网络。
 
@@ -120,3 +127,5 @@ CLI 主动脱敏错误，因此比较“失败”结果而非异常类型或报�
 Apache-2.0 库。不加 `--pynut` 则只运行官方 CLI 对照，日志明确标注 PyNUT 未运行。
 CI 记录版本、源码校验值、各项结果和 TLS 后端；固定包缺失或哈希不符即失败，
 不悄悄换新版本。这些版本用于可复现测试，不是生产环境更新建议。
+
+本批次同时断言真实 upsd 的空 ENUM/RANGE、不可用描述，以及 server.* 大写请求对应规范小写响应。计数与地址的非空会话生命周期、顺序及其他边界仍见矩阵，不能据本脚本声称完整兼容。

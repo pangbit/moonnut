@@ -1,7 +1,9 @@
 ///|
-/// TLS is mandatory by default. Plaintext is only for explicitly trusted local
-/// networks or an external authenticated tunnel; credentials are never allowed.
+/// TryTls follows the NUT 2.8.4 CLI default: try unverified TLS and continue
+/// in plaintext if STARTTLS is refused. Tls/TlsCaFile require verified TLS.
 pub(all) enum Security {
+  TryTls
+  TlsUnverified
   Tls
   TlsCaFile(String)
   Plaintext
@@ -16,23 +18,28 @@ pub struct Client {
   priv security : Security
   priv username : String?
   priv password : String?
-  priv timeout_ms : Int32
+  priv timeout_ms : Int32?
+  priv connect_timeout_ms : Int32
+  priv read_timeout_ms : Int32
   priv max_line_bytes : Int32
   priv max_rows : Int32
   priv max_response_bytes : Int32
 }
 
 ///|
-/// The timeout covers DNS, connection, TLS, credential exchange and the whole query.
+/// Optional timeout_ms caps the whole operation. By default, connection has a
+/// 10-second timeout and each transport read has a 5-second timeout (NUT CLI values).
 /// NUT may accept USERNAME/PASSWORD without validating them until a privileged
 /// command. A successful read does not prove that credentials are correct.
 pub fn Client::new(
   host : String,
   port~ : Int32 = 3493,
-  security~ : Security = Tls,
+  security~ : Security = TryTls,
   username? : String,
   password? : String,
-  timeout_ms~ : Int32 = 5000,
+  timeout_ms? : Int32,
+  connect_timeout_ms~ : Int32 = 10000,
+  read_timeout_ms~ : Int32 = 5000,
   max_line_bytes~ : Int32 = 65536,
   max_rows~ : Int32 = 4096,
   max_response_bytes~ : Int32 = 4194304,
@@ -40,7 +47,11 @@ pub fn Client::new(
   if host.is_empty() || port < 1 || port > 65535 {
     raise InvalidArgument("invalid host or port")
   }
-  if timeout_ms <= 0 ||
+  if timeout_ms is Some(value) && value <= 0 {
+    raise InvalidArgument("invalid operation timeout")
+  }
+  if connect_timeout_ms <= 0 ||
+    read_timeout_ms <= 0 ||
     max_line_bytes < 16 ||
     max_line_bytes > 1048576 ||
     max_rows < 1 ||
@@ -52,9 +63,6 @@ pub fn Client::new(
   ignore(quote_argument(host))
   match (username, password) {
     (Some(u), Some(p)) => {
-      if security is Plaintext {
-        raise InvalidArgument("credentials require verified TLS")
-      }
       ignore(quote_argument(u))
       ignore(quote_argument(p))
       if u.is_empty() {
@@ -72,6 +80,8 @@ pub fn Client::new(
     username,
     password,
     timeout_ms,
+    connect_timeout_ms,
+    read_timeout_ms,
     max_line_bytes,
     max_rows,
     max_response_bytes,
@@ -92,6 +102,7 @@ priv struct Session {
   mut received : Int32
   max_response_bytes : Int32
   max_line_bytes : Int32
+  read_timeout_ms : Int32
 }
 
 ///|
@@ -105,17 +116,16 @@ async fn Session::write(self : Session, line : String) -> Unit {
 ///|
 /// One-byte STARTTLS reads prevent reading encrypted data into a cleartext
 /// buffer. Normal replies use a bounded buffer and retain fragmented lines.
-async fn Session::line(
-  self : Session,
-  handshake~ : Bool = false,
-) -> Array[String] {
+async fn Session::raw_line(self : Session, handshake~ : Bool = false) -> String {
   let buffer = @buffer.Buffer()
   while true {
     if self.offset == self.pending.length() {
-      let chunk = match self.transport {
-        Clear(tcp) => tcp.read_some(max_len=if handshake { 1 } else { 4096 })
-        Secure(tls) => tls.read_some(max_len=4096)
-      }
+      let chunk = @async.with_timeout(self.read_timeout_ms, () => {
+        match self.transport {
+          Clear(tcp) => tcp.read_some(max_len=if handshake { 1 } else { 4096 })
+          Secure(tls) => tls.read_some(max_len=4096)
+        }
+      })
       match chunk {
         None => raise UnexpectedEof
         Some(bytes) => {
@@ -142,12 +152,7 @@ async fn Session::line(
       } catch {
         _ => raise Protocol("invalid UTF-8 response")
       }
-      let tokens = parse_line(text)
-      if tokens.is_empty() {
-        raise Protocol("empty response")
-      }
-      check_server(tokens)
-      return tokens
+      return text
     }
     if buffer.length() >= self.max_line_bytes {
       raise LimitExceeded("line")
@@ -159,15 +164,36 @@ async fn Session::line(
 }
 
 ///|
+async fn Session::line(self : Session) -> Array[String] {
+  let tokens = parse_line(self.raw_line())
+  if tokens.is_empty() {
+    raise Protocol("empty response")
+  }
+  check_server(tokens)
+  tokens
+}
+
+///|
+async fn[T] with_optional_timeout(timeout : Int32?, run : async () -> T) -> T {
+  match timeout {
+    Some(ms) => @async.with_timeout(ms, run)
+    None => run()
+  }
+}
+
+///|
 async fn Client::query(
   self : Client,
   command : String,
   header : Array[String],
   list : Bool,
   row_values~ : Int32 = 2,
+  raw~ : Bool = false,
 ) -> Array[Array[String]] {
-  @async.with_timeout(self.timeout_ms, () => {
-    let tcp = @socket.Tcp::connect_to_host(self.host, port=self.port)
+  with_optional_timeout(self.timeout_ms, () => {
+    let tcp = @async.with_timeout(self.connect_timeout_ms, () => {
+      @socket.Tcp::connect_to_host(self.host, port=self.port)
+    })
     defer tcp.close()
     let session : Session = {
       transport: Clear(tcp),
@@ -176,18 +202,26 @@ async fn Client::query(
       received: 0,
       max_response_bytes: self.max_response_bytes,
       max_line_bytes: self.max_line_bytes,
+      read_timeout_ms: self.read_timeout_ms,
     }
     match self.security {
       Plaintext => ()
       _ => {
         session.write("STARTTLS")
-        expect(session.line(handshake=true), ["OK", "STARTTLS"])
-        let trust = match self.security {
-          TlsCaFile(path) => @tls.CustomPemFile(path)
-          _ => @tls.SystemRoot
+        let reply = session.raw_line(handshake=true)
+        if reply.has_prefix("OK STARTTLS") {
+          let trust = match self.security {
+            TryTls | TlsUnverified => @tls.NoVerification
+            TlsCaFile(path) => @tls.CustomPemFile(path)
+            _ => @tls.SystemRoot
+          }
+          let tls = @async.with_timeout(self.read_timeout_ms, () => {
+            @tls.Tls::client(tcp, host=self.host, trust~)
+          })
+          session.transport = Secure(tls)
+        } else if !(self.security is TryTls) {
+          expect(parse_line(reply), ["OK", "STARTTLS"])
         }
-        let tls = @tls.Tls::client(tcp, host=self.host, trust~)
-        session.transport = Secure(tls)
       }
     }
     defer (match session.transport {
@@ -204,16 +238,27 @@ async fn Client::query(
       _ => ()
     }
     session.write(command)
+    if raw {
+      let reply = session.raw_line()
+      if reply.is_empty() {
+        raise Protocol("empty response")
+      }
+      if reply.has_prefix("ERR ") {
+        check_server(parse_line(reply))
+      }
+      return [[reply]]
+    }
     if !list {
       return [session.line()]
     }
     let begin = ["BEGIN", "LIST"] + header
     let end = ["END", "LIST"] + header
-    expect(session.line(), begin)
+    expect_echo(session.line(), begin)
     let rows : Array[Array[String]] = []
     while true {
       let row = session.line()
-      if row == end {
+      if row.length() == end.length() && row[0] == "END" && row[1] == "LIST" {
+        expect_echo(row, end)
         return rows
       }
       if rows.length() >= self.max_rows {
@@ -223,7 +268,7 @@ async fn Client::query(
         raise Protocol("invalid list row shape")
       }
       for i in 0..<header.length() {
-        if row[i] != header[i] {
+        if !row[i].equal_ignore_ascii_case(header[i]) {
           raise Protocol("invalid list row header")
         }
       }
@@ -253,23 +298,13 @@ pub(all) struct Variable {
 /// No management or shutdown command is exposed.
 pub async fn Client::list_ups(self : Client) -> Array[Ups] {
   let rows = self.query("LIST UPS", ["UPS"], true)
-  rows.map(row => {
-    match row {
-      ["UPS", name, description] => { name, description, }
-      _ => raise Protocol("invalid UPS list row")
-    }
-  })
+  rows.map(row => { name: row[1], description: row[2], })
 }
 
 ///|
 pub async fn Client::list_vars(self : Client, ups : String) -> Array[Variable] {
   let rows = self.query("LIST VAR " + quote_argument(ups), ["VAR", ups], true)
-  rows.map(row => {
-    match row {
-      ["VAR", device, name, value] if device == ups => { name, value, }
-      _ => raise Protocol("invalid variable list row")
-    }
-  })
+  rows.map(row => { name: row[2], value: row[3], })
 }
 
 ///|
@@ -284,7 +319,9 @@ pub async fn Client::get_var(
     false,
   )
   match rows[0] {
-    ["VAR", device, key, value] if device == ups && key == name => value
+    [kind, device, key, value] if kind.equal_ignore_ascii_case("VAR") &&
+      device.equal_ignore_ascii_case(ups) &&
+      key.equal_ignore_ascii_case(name) => value
     _ => raise Protocol("invalid variable response")
   }
 }
@@ -294,7 +331,8 @@ pub async fn Client::get_var(
 pub async fn Client::get_ups_description(self : Client, ups : String) -> String {
   let rows = self.query("GET UPSDESC " + quote_argument(ups), [], false)
   match rows[0] {
-    ["UPSDESC", device, description] if device == ups => description
+    [kind, device, description] if kind.equal_ignore_ascii_case("UPSDESC") &&
+      device.equal_ignore_ascii_case(ups) => description
     _ => raise Protocol("invalid UPS description response")
   }
 }
@@ -312,8 +350,9 @@ pub async fn Client::get_var_description(
     false,
   )
   match rows[0] {
-    ["DESC", device, key, description] if device == ups && key == name =>
-      description
+    [kind, device, key, description] if kind.equal_ignore_ascii_case("DESC") &&
+      device.equal_ignore_ascii_case(ups) &&
+      key.equal_ignore_ascii_case(name) => description
     _ => raise Protocol("invalid variable description response")
   }
 }
@@ -334,7 +373,10 @@ pub async fn Client::get_var_type(
     false,
   )
   let row = rows[0]
-  if row.length() < 3 || row[0] != "TYPE" || row[1] != ups || row[2] != name {
+  if row.length() < 3 ||
+    !row[0].equal_ignore_ascii_case("TYPE") ||
+    !row[1].equal_ignore_ascii_case(ups) ||
+    !row[2].equal_ignore_ascii_case(name) {
     raise Protocol("invalid variable type response")
   }
   row[3:].to_owned()
@@ -426,8 +468,9 @@ pub async fn Client::get_command_description(
     false,
   )
   match rows[0] {
-    ["CMDDESC", device, name, description] if device == ups && name == command =>
-      description
+    [kind, device, name, description] if kind.equal_ignore_ascii_case("CMDDESC") &&
+      device.equal_ignore_ascii_case(ups) &&
+      name.equal_ignore_ascii_case(command) => description
     _ => raise Protocol("invalid command description response")
   }
 }
@@ -437,3 +480,56 @@ pub extend VariableRange with Eq::{equal, not_equal}
 
 ///|
 pub extend VariableRange with @debug.Debug::{to_repr}
+
+///|
+/// Count clients which have issued LOGIN for this UPS, not all TCP connections.
+pub async fn Client::get_num_logins(self : Client, ups : String) -> Int32 {
+  let rows = self.query("GET NUMLOGINS " + quote_argument(ups), [], false)
+  match rows[0] {
+    [kind, device, value] if kind.equal_ignore_ascii_case("NUMLOGINS") &&
+      device.equal_ignore_ascii_case(ups) => {
+      if value.is_empty() || !value.iter().all(ch => ch.is_ascii_digit()) {
+        raise Protocol("invalid login count")
+      }
+      @string.parse_int(value) catch {
+        _ => raise Protocol("invalid login count")
+      }
+    }
+    _ => raise Protocol("invalid login count response")
+  }
+}
+
+///|
+/// Preserve the server's LOGIN client addresses, including repeated addresses.
+pub async fn Client::list_clients(self : Client, ups : String) -> Array[String] {
+  let rows = self.query(
+    "LIST CLIENT " + quote_argument(ups),
+    ["CLIENT", ups],
+    true,
+    row_values=1,
+  )
+  rows.map(row => row[2])
+}
+
+///|
+/// The server's unmodified VER banner, excluding the line delimiter.
+pub async fn Client::get_server_version(self : Client) -> String {
+  self.query("VER", [], false, raw=true)[0][0]
+}
+
+///|
+pub async fn Client::get_net_version(self : Client) -> String {
+  self.query("NETVER", [], false, raw=true)[0][0]
+}
+
+///|
+/// Request PROTVER explicitly; NUT 2.8.4 treats it as a NETVER alias.
+pub async fn Client::get_protocol_version(self : Client) -> String {
+  self.query("PROTVER", [], false, raw=true)[0][0]
+}
+
+///|
+/// HELP is informational: NUT omits some supported commands from this response.
+pub async fn Client::get_help(self : Client) -> String {
+  self.query("HELP", [], false, raw=true)[0][0]
+}

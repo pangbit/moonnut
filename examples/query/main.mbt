@@ -1,6 +1,12 @@
 ///|
 priv enum Operation {
   Ups
+  NumLogins(String)
+  Clients(String)
+  ServerVersion
+  NetVersion
+  ProtocolVersion
+  ServerHelp
   Vars(String)
   Var(String, String)
   UpsDescription(String)
@@ -16,9 +22,11 @@ priv enum Operation {
 ///|
 fn usage() -> Unit {
   println(
-    "Usage: query HOST PORT [--plaintext | --ca FILE] [--vars UPS | --get UPS VARIABLE | --ups-desc UPS | --desc UPS VARIABLE | --type UPS VARIABLE | --rw UPS | --enum UPS VARIABLE | --range UPS VARIABLE | --commands UPS | --cmd-desc UPS COMMAND] [--json]",
+    "Usage: query HOST PORT [--plaintext | --tls | --tls-unverified | --ca FILE] [--vars UPS | --get UPS VARIABLE | --ups-desc UPS | --desc UPS VARIABLE | --type UPS VARIABLE | --rw UPS | --enum UPS VARIABLE | --range UPS VARIABLE | --commands UPS | --cmd-desc UPS COMMAND | --num-logins UPS | --clients UPS | --server-version | --net-version | --protocol-version | --server-help] [--json]",
   )
-  println("TLS with certificate and hostname verification is the default.")
+  println(
+    "Default: try unverified TLS, then plaintext if STARTTLS is refused (NUT CLI policy). Use --tls or --ca FILE to require verified TLS.",
+  )
 }
 
 ///|
@@ -30,7 +38,7 @@ async fn main {
     return
   }
   try {
-    let mut security = @moonnut.Tls
+    let mut security = @moonnut.TryTls
     let mut security_set = false
     let mut operation = Ups
     let mut operation_set = false
@@ -42,6 +50,16 @@ async fn main {
           json_output = true
           index += 1
         }
+        "--tls" if !security_set => {
+          security = @moonnut.Tls
+          security_set = true
+          index += 1
+        }
+        "--tls-unverified" if !security_set => {
+          security = @moonnut.TlsUnverified
+          security_set = true
+          index += 1
+        }
         "--plaintext" if !security_set => {
           security = @moonnut.Plaintext
           security_set = true
@@ -51,6 +69,36 @@ async fn main {
           security = @moonnut.TlsCaFile(args[index + 1])
           security_set = true
           index += 2
+        }
+        "--num-logins" if !operation_set && index + 1 < args.length() => {
+          operation = NumLogins(args[index + 1])
+          operation_set = true
+          index += 2
+        }
+        "--clients" if !operation_set && index + 1 < args.length() => {
+          operation = Clients(args[index + 1])
+          operation_set = true
+          index += 2
+        }
+        "--server-version" if !operation_set => {
+          operation = ServerVersion
+          operation_set = true
+          index += 1
+        }
+        "--net-version" if !operation_set => {
+          operation = NetVersion
+          operation_set = true
+          index += 1
+        }
+        "--protocol-version" if !operation_set => {
+          operation = ProtocolVersion
+          operation_set = true
+          index += 1
+        }
+        "--server-help" if !operation_set => {
+          operation = ServerHelp
+          operation_set = true
+          index += 1
         }
         "--vars" if !operation_set && index + 1 < args.length() => {
           operation = Vars(args[index + 1])
@@ -116,6 +164,46 @@ async fn main {
       password?=@env.get_env_var("MOONNUT_PASSWORD"),
     )
     match operation {
+      NumLogins(ups) => {
+        let count = client.get_num_logins(ups)
+        if json_output {
+          println(
+            @json.Json::object({
+              "ups": @json.Json::string(ups),
+              "num_logins": @json.Json::number(count.to_double()),
+            }).stringify(),
+          )
+        } else {
+          println(count)
+        }
+      }
+      Clients(ups) => {
+        let addresses = client.list_clients(ups)
+        if json_output {
+          println(
+            @json.Json::array(
+              addresses.map(address => @json.Json::string(address)),
+            ).stringify(),
+          )
+        } else {
+          for address in addresses {
+            println(address)
+          }
+        }
+      }
+      ServerVersion | NetVersion | ProtocolVersion | ServerHelp => {
+        let value = match operation {
+          ServerVersion => client.get_server_version()
+          NetVersion => client.get_net_version()
+          ProtocolVersion => client.get_protocol_version()
+          _ => client.get_help()
+        }
+        if json_output {
+          println(@json.Json::string(value).stringify())
+        } else {
+          println(value)
+        }
+      }
       Ups => {
         let devices = client.list_ups()
         if json_output {

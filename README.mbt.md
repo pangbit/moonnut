@@ -3,7 +3,9 @@
 [简体中文](README.zh-CN.md)
 
 A small, independently implemented **NUT upsd client for MoonBit native**.
-Personally maintained, Apache-2.0 licensed, and deliberately read-only.
+Personally maintained, Apache-2.0 licensed, with a currently read-only API.
+The goal is full NUT client parity; server and UPS-driver implementations are excluded.
+See the [staged plan](docs/parity-plan.md) and [acceptance matrix](docs/parity-matrix.md).
 The library does not require a NUT executable or a Python runtime.
 
 GitHub main includes unreleased demonstration work. Mooncakes releases are
@@ -14,10 +16,12 @@ performed manually by the maintainer; the existing 0.1.0 release is unchanged.
 - `LIST UPS`, `LIST VAR` and `GET VAR`, with typed device/variable results.
 - `GET UPSDESC`, `GET DESC` and `GET TYPE` for descriptions and raw type metadata.
 - `LIST RW` / `ENUM` / `RANGE`, `LIST CMD` and `GET CMDDESC` for read-only capability discovery.
-- Verified STARTTLS by default, using system roots or an explicit PEM CA file.
-- Optional `USERNAME` / `PASSWORD` submission **only after verified TLS**.
-- One fresh connection per query; no shared stream, pooling, automatic retries or downgrade.
-- Whole-operation timeout, bounded line length, total response bytes and list rows.
+- `GET NUMLOGINS`, `LIST CLIENT`, `VER`, `NETVER`, `PROTVER` and `HELP`.
+- NUT CLI default: try unverified STARTTLS, allow plaintext when STARTTLS is refused.
+- Explicit verified TLS using system roots or a PEM CA file.
+- Optional paired `USERNAME` / `PASSWORD`, including plaintext as in official clients.
+- One fresh connection per query; no shared stream, pooling or automatic retries.
+- Separate connection/read timeouts, optional whole-operation deadline, and bounded responses.
 - NUT-style quoting and escaping, strict reply identity and list boundary checks.
 
 There is **no** `FSD`, `SET VAR`, `INSTCMD`, `LOGIN`, `PRIMARY`/`MASTER`, shutdown,
@@ -69,7 +73,7 @@ test "decode a synthetic NUT response" {
 In a native async application, create `Client::new("ups.example.invalid")`, then
 call `list_ups()`, `list_vars("demo")` or `get_var("demo", "ups.status")`. Values
 remain strings; a status like `OL CHRG` must not be treated as a single enum value.
-Each call opens a connection, optionally submits credentials over verified TLS,
+Each call opens a connection, optionally submits credentials using the selected transport,
 and closes the connection, including on failure.
 
 ```sh
@@ -137,6 +141,8 @@ moon run examples/query --target native -- ups.example.invalid 3493 --get demo u
 {"ups":"demo","name":"ups.status","value":"OL CHRG"}
 ```
 
+See [server information queries](docs/server-info.md) for the six additional read APIs and CLI flags.
+
 ## API choices
 
 `Client::new` options:
@@ -144,19 +150,25 @@ moon run examples/query --target native -- ups.example.invalid 3493 --get demo u
 | Option | Default | Meaning |
 | --- | --- | --- |
 | `port` | `3493` | TCP server port |
-| `security` | `Tls` | System roots; `TlsCaFile(path)` uses a custom CA |
-| `username`, `password` | absent | Paired credentials, TLS only |
-| `timeout_ms` | `5000` | DNS through the complete response |
+| `security` | `TryTls` | Unverified TLS attempt, plaintext on STARTTLS refusal |
+| `username`, `password` | absent | Paired credentials; may be sent in plaintext |
+| `connect_timeout_ms` | `10000` | DNS and connection deadline |
+| `read_timeout_ms` | `5000` | Each transport read; also bounds TLS handshake |
+| `timeout_ms` | absent | Optional deadline from DNS through the complete response |
 | `max_line_bytes` | `65536` | Bytes before a line's LF delimiter |
 | `max_response_bytes` | `4194304` | Total received protocol bytes, including credential-exchange replies |
 | `max_rows` | `4096` | Rows in a list response |
 
-`Plaintext` must be explicitly selected and cannot be combined with credentials.
-It provides neither confidentiality nor server authentication and is intended
-only for a controlled test or separately secured channel. There is no
-"trust all certificates" setting. A refused STARTTLS never falls back to plaintext.
-TLS minimum versions and cipher policy are inherited from the underlying TLS
-library; moonnut does not currently enforce a separate TLS 1.2/1.3 minimum.
+`TryTls` matches the official NUT 2.8.4 CLI transport policy. It does not authenticate
+the server, and a STARTTLS refusal permits plaintext credentials and queries.
+A failed TLS handshake or transport read does not trigger fallback or retry.
+Use `Tls` (`--tls`) or `TlsCaFile(path)` (`--ca FILE`) to require certificate and
+hostname verification. `TlsUnverified` (`--tls-unverified`) requires encryption
+without certificate verification. `Plaintext` (`--plaintext`) skips STARTTLS.
+This changes the earlier unreleased main default; published 0.1.0 is unchanged.
+TLS protocol/cipher policy follows the underlying library. Timeout values now match
+the C CLI constants, but backend timing, DNS/address retries, resource limits and
+other behavior still have open entries in the acceptance matrix.
 
 `NutError` distinguishes invalid arguments, malformed replies, canonical server
 error codes, resource limits and premature EOF. Transport, TLS and timeout errors
@@ -170,13 +182,13 @@ credential-bearing debug representation. Secret memory is not guaranteed to be z
 - [NUT network protocol](https://networkupstools.org/docs/developer-guide.chunked/net-protocol.html):
   practical `upsd` behavior and differences from RFC 9271.
 - [Network UPS Tools](https://github.com/networkupstools/nut) and its
-  [PyNUT reference, v2.8.3](https://github.com/networkupstools/nut/blob/v2.8.3/scripts/python/module/PyNUT.py.in):
+  [PyNUT reference, v2.8.4](https://github.com/networkupstools/nut/blob/v2.8.4/scripts/python/module/PyNUT.py.in):
   reference ecosystem, not embedded dependencies.
 
 RFC 9271 describes mandatory authentication; historical NUT installations also
 allow anonymous read-only queries. moonnut permits anonymous reads but respects
 `ERR ACCESS-DENIED`; it does not claim the RFC's entire security/profile compliance.
-It does not depend on newer command aliases such as `PROTVER` or `PRIMARY`.
+`get_protocol_version()` explicitly supports `PROTVER`; other reads do not depend on it.
 
 **Credential acknowledgment is not authentication proof.** NUT's `PASSWORD` command
 stores a password for later commands that require authorization. A server can
@@ -213,7 +225,7 @@ python3 scripts/cli_json_smoke.py
 python3 scripts/upsd_integration.py
 moon info --target native
 moon fmt --check
-# Optional: external official PyNUT v2.8.3 module, kept outside the repository
+# Optional: external official PyNUT v2.8.4 module, kept outside the repository
 python3 scripts/reference_smoke.py /external/path/PyNUT.py
 # Same-daemon PyNUT/upsc comparison on isolated Linux, with the pinned module
 python3 scripts/upsd_integration.py --pynut /external/path/PyNUT.py

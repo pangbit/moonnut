@@ -3,7 +3,9 @@
 This is an early, personally maintained read-only client, not a safety-critical
 power-management component. Use verified TLS and a minimally privileged NUT
 account. Do not expose an unauthenticated upsd port to untrusted networks.
-Plaintext is an explicit opt-in and must never carry credentials. Responses and
+The default follows NUT CLI TRYSSL: unverified TLS, with plaintext (including
+credentials) on STARTTLS refusal. Use explicit Tls/TlsCaFile or --tls/--ca for
+verified transport. Handshake failures do not fall back. Responses and
 resource limits are validated, but secrets in process memory are not guaranteed
 to be zeroized. Minimum TLS versions and cipher policy follow the underlying TLS
 library; this client does not independently enforce a TLS 1.2/1.3 minimum.
@@ -14,8 +16,8 @@ the contact route on their public profile. Do not open a public issue containing
 secrets, private endpoints or an uncoordinated exploit. Use synthetic reproductions.
 
 这是早期的个人维护只读客户端，不是安全关键电源管理组件。使用验证过的 TLS 和
-最小权限 NUT 账号，不要将未认证的 upsd 端口暴露给不可信网络。明文必须显式选择，
-且不得发送凭据。项目校验响应与资源上限，但不保证进程中秘密内存安全清零。
+最小权限 NUT 账号，不要将未认证的 upsd 端口暴露给不可信网络。默认按官方 CLI TRYSSL：不验证证书，STARTTLS 被拒绝时回退明文，
+包括凭据。显式使用 Tls/TlsCaFile 或 --tls/--ca 可要求验证；握手失败不会回退。项目校验响应与资源上限，但不保证进程中秘密内存安全清零。
 最低 TLS 版本及算法策略继承底层库，当前未额外强制 TLS 1.2/1.3 最低版本。
 不宣称通过真实硬件认证或安全审计。
 
