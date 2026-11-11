@@ -42,6 +42,16 @@ jobs:
           cc -Wall -Wextra -Werror scripts/nut_reference.c -lupsclient -o "$RUNNER_TEMP/moonnut-reference/nut-reference"
           cc -Wall -Wextra -Werror scripts/nut_session_reference.c -lupsclient -o "$RUNNER_TEMP/moonnut-reference/nut-session-reference"
           python3 scripts/upsd_integration.py --pynut "$RUNNER_TEMP/moonnut-reference/PyNUT.py" --nut-reference "$RUNNER_TEMP/moonnut-reference/nut-reference" --session-reference "$RUNNER_TEMP/moonnut-reference/nut-session-reference"
+          cc -Wall -Wextra -Werror scripts/nut_control_reference.c -lupsclient -o "$RUNNER_TEMP/moonnut-reference/nut-control-reference"
+          python3 scripts/control_integration.py --reference "$RUNNER_TEMP/moonnut-reference/nut-control-reference" --evidence-dir "$RUNNER_TEMP/moonnut-control-evidence"
           moon info --target native
           moon fmt --check
           git diff --exit-code -- '*.mbti' '*.mbt' moon.mod moon.pkg
+      - name: Save isolated control evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: isolated-control-evidence
+          path: ${{ runner.temp }}/moonnut-control-evidence
+          if-no-files-found: ignore
+          retention-days: 7

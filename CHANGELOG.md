@@ -2,19 +2,26 @@
 
 ## Unreleased / 未发布
 
+- Add explicit Session SET VAR, INSTCMD, PRIMARY/MASTER and FSD requests, with
+  distinct accepted/tracked receipts and no implicit completion wait or replay.
+- Add three focused native tests and a separate isolated in-memory control
+  comparison against official libupsclient and upsrw/upscmd; Linux execution
+  evidence is pending for this change. No real UPS or host shutdown is involved.
+- 新增五项显式客户端控制请求，区分普通/带 tracking 的接受确认，不隐式等待或重发。
+  增加三项必要原生测试及独立内存夹具的官方库/CLI 对照；本批 Linux 执行证据待补，
+  不涉及真实 UPS 或宿主机关机，默认传输风险及用户控制发布的限制不变。
+
 - Add explicit persistent Session connections with all 17 existing reads,
   independent credential submission, tracking, LOGIN/LOGOUT and encryption state.
   Preserve fresh connections for Client reads; serialize session requests and
   close incomplete/cancelled streams without automatic replay.
 - Add focused lifecycle tests and a loopback-only 44-outcome comparison with
   official libupsclient using a disposable LOGIN-only account; all three transport
-  profiles pass. No UPS writes or
-  power commands are added; real operation-tracking outcomes remain unverified.
+  profiles pass. This earlier session-only stage did not add UPS writes or power commands.
 - 新增显式持久会话，复用 17 项读取，并提供独立凭据、tracking、LOGIN/LOGOUT 及连接状态。
   Client 读取仍用独立连接；会话串行执行，未完整读取或取消后关闭，不自动重放。
 - 新增必要生命周期测试及官方 C 库 44 项回环对照，三种传输配置均通过；账号仅有
-  LOGIN 权限，没有新增 UPS
-  写入/电源命令，真实操作 tracking 结果仍待后续隔离验收。默认明文回退风险保持明确说明。
+  LOGIN 权限；该早期会话阶段没有增加 UPS 写入/电源命令。默认明文回退风险保持明确说明。
 
 - Confirm the complete NUT client target and pin NUT 2.8.4; add a staged plan and
   acceptance matrix retaining all remaining client gaps. Servers and UPS drivers

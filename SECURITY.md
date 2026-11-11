@@ -38,4 +38,16 @@ password. Requests are never automatically replayed after connection failure.
 
 显式 Session.login 登记供电消费者，影响 NUMLOGINS/LIST CLIENT；即使没有发送 UPS
 控制命令，也必须获得目标服务器的授权。tracking 开关与凭据属于连接状态，不证明
-密码正确；连接失败后不会自动重放请求。测试账号仅授予 LOGIN，不授予设备控制。
+密码正确；连接失败后不会自动重放请求。会话对照账号仅授予 LOGIN；控制对照另用完全隔离的临时账号及内存设备。
+
+Explicit SET VAR/INSTCMD can change a real device, and FSD can cause connected
+monitors to shut systems down. An accepted request or driver Success is not
+independent proof of its physical effect. A lost acknowledgement leaves the
+outcome uncertain; never assume it is safe to repeat. The control tests use fresh
+loopback daemons, fake credentials and a purely in-memory driver. No real driver,
+upsmon, shutdown executable or service manager participates. See [controls](docs/controls.md).
+
+显式 SET VAR/INSTCMD 可改变真实设备，FSD 可使监控程序关闭系统。接受请求或驱动报告
+Success 不是实物效果的独立证据；丢失确认时结果不确定，不能据此认为可以安全重发。
+控制测试仅使用新建回环守护进程、假凭据和纯内存驱动；不启动真实驱动、upsmon、
+关机程序或服务管理器。默认明文回退风险不变，发布仍由用户控制。

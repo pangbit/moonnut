@@ -5,7 +5,7 @@ Status: **Client scope confirmed; implementation in progress.**
 
 ## Goal and decisions / 目标与已确认决定
 
-moonnut 的目标是覆盖 NUT 客户端能力，并与固定参考的功能、默认值及可观察行为一致。当前提供 17 种基础读取与显式会话、tracking、LOGIN/LOGOUT，不是完整客户端。已有测试通过只证明对应场景，不能称为无缺失、无差异。
+moonnut 的目标是覆盖 NUT 客户端能力，并与固定参考的功能、默认值及可观察行为一致。当前提供 17 种基础读取、显式会话与五项控制请求，不是完整客户端。已有测试通过只证明对应场景，不能称为无缺失、无差异。
 
 - 用户确认「只对齐客户端能力」。实现目标包括客户端协议、库能力、查询/管理 CLI，以及客户端监控功能。**不实现 upsd、UPS 驱动或驱动服务管理器**；它们仅作为隔离参考和夹具。
 - 用户选择「默认行为也与官方 CLI 完全一致」。默认传输按 NUT 2.8.4 的 `TRYSSL`：尝试不验证证书的 TLS；STARTTLS 被拒绝时继续同连接明文；握手/IO 失败则终止。凭据允许明文发送。验证证书与强制 TLS 仍作为显式选项。
@@ -35,13 +35,13 @@ CI 记录包版本、架构、官方 CLI 二进制 SHA-256 和动态库/TLS 后�
 
 | Layer / 层次 | Scope / 范围 | Current gap / 当前缺口 |
 | --- | --- | --- |
-| Network client library | 所有 N01–N30 请求、响应/错误/状态机、传输；C/C++/PyNUT 业务能力的 MoonBit 映射 | 持久会话与 tracking 已推进；写入/控制、低层 API 等仍缺失 |
+| Network client library | 所有 N01–N30 请求、响应/错误/状态机、传输；C/C++/PyNUT 业务能力的 MoonBit 映射 | 持久会话、tracking 与控制协议已推进；库便捷映射、低层 API 等仍有缺口 |
 | Official client CLIs | upsc、upsrw、upscmd 的参数、默认、交互、输出/退出状态、等待语义 | `examples/query` 仍是演示，不是三个程序的替代品 |
 | Monitoring clients | upsmon、upslog、upssched、GUI/CGI 客户端功能，X09–X11/X14 | 未实现；逐程序/配置项继续展开，不能因当前为库而删除 |
 | Adjacent tools | X12/X13/X15 保留客户端相关扫描、配置及平台接入；非客户端后端按角色区分 | 需逐项映射；USB/物理驱动与服务端安装不纳入产品实现 |
 | Server/drivers | X01–X08 | 用户确认范围外；官方 upsd、dummy-ups、合成 socket 状态仅用于测试 |
 
-NUT 链路：设备 ↔ 驱动 ↔ 驱动 socket 协议 ↔ upsd ↔ **TCP 客户端协议** ↔ 客户端。客户端不实现 `SETINFO`、`ADDRANGE` 等驱动消息；测试脚本使用它们构造静态输入。客户端验收可在隔离参考服务和虚拟设备上进行，不声称验证真实电源效果。
+NUT 链路：设备 ↔ 驱动 ↔ 驱动 socket 协议 ↔ upsd ↔ **TCP 客户端协议** ↔ 客户端。客户端不实现 `SETINFO`、`ADDRANGE` 等驱动消息；测试脚本使用它们构造静态或内存状态。客户端验收可在隔离参考服务和虚拟设备上进行，不声称验证真实电源效果。
 
 ## Stages / 分阶段工作
 
@@ -57,13 +57,13 @@ NUT 链路：设备 ↔ 驱动 ↔ 驱动 socket 协议 ↔ upsd ↔ **TCP 客�
 
 前一批次落实 P1/P2 的可独立部分：六项读取、TLS 默认、明文凭据、大小写响应匹配；默认连接 10 秒、每次传输读取 5 秒，整体截止时间改为显式选项。真实上游超时还涉及地址重试、DNS、TLS 后端和环境覆盖，B07/B12 **仍未关闭**。行/行数/总字节上限、UTF-8 策略与严格列表结束标识也仍是待对照差异。
 
-本批次 P3 采用显式 Session 承载 tracking/LOGIN：复用全部读取、独立凭据、注销/关闭、串行化与取消清理；增加仅 LOGIN 权限账号，与官方 C 库对照 44 项结果。真实有效 tracking ID 生命周期留在 P4。P4 仅在隔离环境实现和验收。既有一次查询一连接的 API 可继续使用，但不能伪装为具有连接内状态的客户端。无需为本批次提前建设通用模拟框架。
+前批次 P3 采用显式 Session 承载 tracking/LOGIN：复用全部读取、独立凭据、注销/关闭、串行化与取消清理；增加仅 LOGIN 权限账号，与官方 C 库对照 44 项结果。真实有效 tracking ID 生命周期由本批 P4 独立内存夹具推进。P4 仅在隔离环境实现和验收。既有一次查询一连接的 API 可继续使用，但不能伪装为具有连接内状态的客户端。无需为本批次提前建设通用模拟框架。
 
 ## Conflicts and remaining decisions / 冲突及后续裁决
 
 | ID | Evidence / 事实 | Treatment / 处理建议或决定 |
 | --- | --- | --- |
-| D01 | 控制/CLI/监控能力及部分会话边界尚缺 | 保留 M 状态，按 P3–P5 继续；不能以本批次完成宣称客户端完整 |
+| D01 | CLI/监控能力、控制便捷映射及部分会话边界尚缺 | 保留 M 状态，按 P3–P5 继续；不能以本批次完成宣称客户端完整 |
 | D02 | 安全默认与官方 TRYSSL 不同 | **用户已裁决官方默认优先**；前批次已改为 TryTls；显式 Tls/TlsCaFile 仍验证证书 |
 | D03 | C/C++/PyNUT 默认、容器和错误不完全相同 | 默认使用官方 C CLI profile；各库业务能力逐项映射；发生互斥语义时列出双方结果，不能同时声称完全等同 |
 | D04 | C ABI、C++ 对象与 MoonBit API 不同 | 当前推进 MoonBit 业务语义映射；ABI/源码可替换尚无证据，不冒充等价；如用户需要二进制替换需单列产物 |
@@ -84,3 +84,19 @@ NUT 链路：设备 ↔ 驱动 ↔ 驱动 socket 协议 ↔ upsd ↔ **TCP 客�
 English: Current progress adds six read operations, CLI-compatible TLS negotiation, plaintext credential support, ASCII-insensitive echoed identifiers, and separate connection/read defaults. This does not close session, control, CLI replacement, parser limits, all timeout behavior, other client-library semantics, or monitoring/platform gaps. The matrix keeps these explicit. Compare equivalent states against pinned clients; retain raw evidence and distinguish synthetic tests from real-upsd differential tests. All control testing must remain disposable and isolated.
 
 English session progress: explicit connect/with_session, shared read methods, credential commands, tracking, LOGIN/LOGOUT and cancellation-safe serialization are implemented. The isolated session comparison adds 44 outcomes using official libupsclient; it does not exercise any UPS write or power action. Real operation tracking results, C++ empty-ID semantics, automatic reconnect and remaining CLI/platform behaviors stay open.
+
+## Current P4 subset / 当前 P4 子集
+
+五项 Session 控制 API 已实现；本地 48 项原生测试通过。新增独立内存驱动、固定回环
+MoonBit/C 探针及官方 upsrw/upscmd 等待对照，Linux 直接运行状态见[控制文档](controls.md)。
+检查 52 项可观察结果、15 条驱动请求及 8 个真实生成的 tracking ID；UUID 单独声明归一化。
+ACK 与实际应用分开，Pending 通过人工 release 转为 Success，FSD 不接触真实设备或监控程序。
+这仍不是 P4 整体完成；管理 CLI、C++ fallback/多值/便捷等待、参数边界和平台证据继续保留。
+
+English: The current P4 subset adds five explicit Session control methods and
+three focused native tests (48 total). A separate disposable in-memory driver
+supports official-library/CLI comparisons with equivalent fresh server state,
+real upsd tracking IDs and raw driver evidence. See controls.md for execution
+status. CLI replacement, convenience/library mappings and other matrix gaps
+remain open. Neither simulated completion nor passing selected traces proves
+physical effects or full client parity. No real UPS control or publication.

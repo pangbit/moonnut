@@ -3,7 +3,7 @@
 [English](README.mbt.md)
 
 面向 **MoonBit native** 的小型 NUT upsd 客户端，独立实现、个人维护、
-Apache-2.0 开源，提供读取与显式连接状态操作。最终目标为完整 NUT 客户端能力，不实现服务端或 UPS 驱动。
+Apache-2.0 开源，提供读取、显式会话和客户端控制请求。最终目标为完整 NUT 客户端能力，不实现服务端或 UPS 驱动。
 详见[分阶段计划](docs/parity-plan.md)与[逐项验收矩阵](docs/parity-matrix.md)。库运行时不依赖 NUT 或 Python。
 
 GitHub main 包含未发布的演示改进。Mooncakes 由维护者手动发布，已有 0.1.0 版本保持不变。
@@ -19,13 +19,13 @@ GitHub main 包含未发布的演示改进。Mooncakes 由维护者手动发布�
 - 可选成对提交 `USERNAME` / `PASSWORD`，与官方客户端一样允许明文。
 - `Client` 读取各自独立连接；显式 `Session` 可在同一连接执行所有读取。
 - 会话支持独立提交凭据、tracking、LOGIN/LOGOUT 及请求串行化，不自动重连或重试。
+- 显式 Session 支持 SET VAR、INSTCMD、PRIMARY/MASTER、FSD；区分接受与完成。
 - 分别设置连接和读取超时，整体截止时间可选；保留行长、响应字节和行数限制。
 - 支持 NUT 引号和转义规则，校验响应标识及列表边界。
 
-**不提供** `FSD`、`SET VAR`、`INSTCMD`、`PRIMARY`/`MASTER`、关机或
-任意命令接口。它不是电源控制代理，也不是完整 RFC 9271 实现。
-显式 `Session::login` 会改变服务端消费者计数，不会自动发送或用来探测密码。
-凭据提交也创建临时会话状态；只访问已获授权的服务器。
+详见[控制请求语义与隔离验证](docs/controls.md#中文)。当前不是完整 NUT 客户端。
+控制与 LOGIN 均为显式授权动作；LOGIN 改变服务端消费者计数，FSD 可能触发真实监控程序。
+不会以这些请求探测凭据。认证也会创建临时会话状态；只使用已获授权的端点和操作。
 
 **验证范围：** 覆盖合成回环 NUT/TLS 服务，以及隔离 Ubuntu CI 中真实 NUT 2.8.4
 `upsd` + `dummy-ups` 程序与虚拟 UPS。测试将列表、变量值及 UPS 描述与官方 `upsc` 对照，

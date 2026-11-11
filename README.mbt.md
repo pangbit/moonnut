@@ -3,7 +3,7 @@
 [简体中文](README.zh-CN.md)
 
 A small, independently implemented **NUT upsd client for MoonBit native**.
-Personally maintained, Apache-2.0 licensed, with read queries and explicit connection-state operations.
+Personally maintained, Apache-2.0 licensed, with read queries, explicit sessions and client control requests.
 The goal is full NUT client parity; server and UPS-driver implementations are excluded.
 See the [staged plan](docs/parity-plan.md) and [acceptance matrix](docs/parity-matrix.md).
 The library does not require a NUT executable or a Python runtime.
@@ -22,14 +22,15 @@ performed manually by the maintainer; the existing 0.1.0 release is unchanged.
 - Optional paired `USERNAME` / `PASSWORD`, including plaintext as in official clients.
 - Fresh connections for `Client` reads; explicit persistent `Session` with all the same reads.
 - Session credentials, tracking, LOGIN/LOGOUT and serialized queries; no automatic reconnect or retry.
+- Explicit Session SET VAR, INSTCMD, PRIMARY/MASTER and FSD; acceptance is distinct from completion.
 - Separate connection/read timeouts, optional whole-operation deadline, and bounded responses.
 - NUT-style quoting and escaping, strict reply identity and list boundary checks.
 
-There is **no** `FSD`, `SET VAR`, `INSTCMD`, `PRIMARY`/`MASTER`, shutdown,
-or arbitrary-command API. This is not a power-control agent or a complete RFC 9271
-implementation. Explicit `Session::login` changes the server consumer count; it
-is never sent automatically or used as a credential probe. Authentication itself creates temporary server-side session state.
-Only use it against servers you are authorized to query.
+See [client control semantics and isolated validation](docs/controls.md). This is
+not yet a complete NUT client. Controls and LOGIN are explicit authorized actions;
+LOGIN changes the server consumer count, and FSD may trigger real monitors.
+No request is used as a credential probe. Authentication creates temporary
+server-side session state. Only use authorized endpoints and operations.
 
 **Verification boundary:** tests cover synthetic loopback NUT/TLS servers and
 actual NUT 2.8.4 `upsd` + `dummy-ups` programs with a virtual UPS in isolated

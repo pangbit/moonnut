@@ -47,6 +47,15 @@ pub async fn Client::list_vars(Self, String) -> Array[Variable]
 pub fn Client::new(String, port? : Int32, security? : Security, username? : String, password? : String, timeout_ms? : Int32, connect_timeout_ms? : Int32, read_timeout_ms? : Int32, max_line_bytes? : Int32, max_rows? : Int32, max_response_bytes? : Int32) -> Self raise NutError
 pub async fn[T] Client::with_session(Self, async (Session) -> T) -> T
 
+#derive(Eq, @debug.Debug)
+pub(all) enum CommandReceipt {
+  Accepted
+  Tracked(String)
+}
+pub fn CommandReceipt::equal(Self, Self) -> Bool
+pub fn CommandReceipt::not_equal(Self, Self) -> Bool
+pub fn CommandReceipt::to_repr(Self) -> @debug.Repr
+
 pub(all) enum Security {
   TryTls
   TlsUnverified
@@ -59,6 +68,8 @@ pub struct Session {
   // private fields
 }
 pub fn Session::close(Self) -> Unit
+pub async fn Session::execute_command(Self, String, String, parameter? : String) -> CommandReceipt
+pub async fn Session::fsd(Self, String) -> Unit
 pub async fn Session::get_command_description(Self, String, String) -> String
 pub async fn Session::get_help(Self) -> String
 pub async fn Session::get_net_version(Self) -> String
@@ -82,9 +93,12 @@ pub async fn Session::list_ups(Self) -> Array[Ups]
 pub async fn Session::list_vars(Self, String) -> Array[Variable]
 pub async fn Session::login(Self, String) -> Unit
 pub async fn Session::logout(Self) -> Unit
+pub async fn Session::master(Self, String) -> Unit
+pub async fn Session::primary(Self, String) -> Unit
 pub async fn Session::set_password(Self, String) -> Unit
 pub async fn Session::set_tracking(Self, Bool) -> Unit
 pub async fn Session::set_username(Self, String) -> Unit
+pub async fn Session::set_var(Self, String, String, String) -> CommandReceipt
 
 #derive(Eq, @debug.Debug)
 pub(all) enum TrackingStatus {
