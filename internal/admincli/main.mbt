@@ -112,7 +112,7 @@ async fn execute(opt : Options, writable : Bool) -> Unit {
   let client = @moonnut.Client::new(
     host,
     port~,
-    connect_timeout_ms=connect_timeout(opt),
+    connect_timeout_ms=connect_timeout(opt.connect_timeout),
   )
   let session = client.connect()
   defer session.close()
@@ -205,15 +205,7 @@ pub async fn run(writable~ : Bool) -> Unit {
       exit_code = 1
     }
     @moonnut.NutError::Server(code) => {
-      let message = match code {
-        "UNKNOWN-UPS" => "Unknown UPS"
-        "ACCESS-DENIED" => "Access denied"
-        "VAR-NOT-SUPPORTED" => "Variable not supported by UPS"
-        "DATA-STALE" => "Data stale"
-        "DRIVER-NOT-CONNECTED" => "Driver not connected"
-        "UNKNOWN-COMMAND" => "upsd is too old to support this query"
-        _ => code
-      }
+      let message = server_message(code, false)
       @stdio.stderr.write("Error: " + message + "\n")
       exit_code = 1
     }
@@ -224,5 +216,23 @@ pub async fn run(writable~ : Bool) -> Unit {
   }
   if exit_code != 0 {
     @env.exit(exit_code)
+  }
+}
+
+///|
+fn server_message(code : String, scalar : Bool) -> String {
+  match code {
+    "UNKNOWN-UPS" => "Unknown UPS"
+    "ACCESS-DENIED" => "Access denied"
+    "VAR-NOT-SUPPORTED" => "Variable not supported by UPS"
+    "DATA-STALE" => "Data stale"
+    "DRIVER-NOT-CONNECTED" => "Driver not connected"
+    "UNKNOWN-COMMAND" =>
+      if scalar {
+        "variable unknown (old upsd detected)"
+      } else {
+        "upsd is too old to support this query"
+      }
+    _ => code
   }
 }

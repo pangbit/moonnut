@@ -62,3 +62,11 @@ See [management CLI limits](docs/admin-cli.md).
 管理 CLI 保留官方明文回退默认。-p 密码可被进程参数观察，POSIX 密码提示可避免该 argv
 暴露。tracking 超时可能发生在请求已发送之后，包括 -t 0，不能推断没有执行。
 单行协议接口可发送显式控制请求。测试只连接隔离内存设备，发布限制不变。
+
+The native upsc query CLI does not submit credentials or LOGIN. It still uses
+unverified TLS with plaintext fallback. Its flags follow the official query CLI;
+verified TLS selection is available through the library or examples/query, not
+cmd/upsc. Read-only queries can expose operational information on an untrusted link.
+
+原生 upsc 不提交凭据或 LOGIN，但仍默认不验证 TLS 并允许明文回退，链路不可信时读取
+结果可能泄露运行信息。验证 TLS 通过库或 examples/query 选择，cmd/upsc 没有该参数。

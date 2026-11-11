@@ -15,6 +15,7 @@ import threading
 
 ROOT = Path(__file__).resolve().parents[1]
 BINARY = ROOT / "_build/native/debug/build/examples/query/query.exe"
+QUERY_CLI = ROOT / "_build/native/debug/build/cmd/upsc/upsc.exe"
 REPLY = b'BEGIN LIST UPS\nUPS demo "Test UPS"\nEND LIST UPS\n'
 
 
@@ -151,7 +152,7 @@ def run_negotiation_case(reply, *, auth=False, verify=False, success=True, upsc=
 
 
 def main():
-    assert BINARY.is_file(), "run moon build --target native first"
+    assert BINARY.is_file() and QUERY_CLI.is_file(), "run moon build --target native first"
     with tempfile.TemporaryDirectory(prefix="moonnut-tls-") as folder:
         folder = Path(folder)
         cert, key, config = folder / "cert.pem", folder / "key.pem", folder / "openssl.cnf"
@@ -169,20 +170,24 @@ def main():
         run_case(context, host="localhost", auth=True, success=False, verify=True)
         run_case(context, host="127.0.0.1", ca=cert, auth=True, success=False)
         run_case(context, host="127.0.0.1", auth=True)
+        run_case(context, host="127.0.0.1", upsc=str(QUERY_CLI))
         upsc = shutil.which("upsc")
         if upsc:
             run_case(context, host="127.0.0.1", upsc=upsc)
     for refusal in (b"ERR FEATURE-NOT-SUPPORTED\n", b"ERR UNKNOWN-COMMAND\n"):
         run_negotiation_case(refusal, auth=True)
+        run_negotiation_case(refusal, upsc=str(QUERY_CLI))
         if upsc:
             run_negotiation_case(refusal, upsc=upsc)
     run_negotiation_case(b"ERR FEATURE-NOT-SUPPORTED\n", verify=True, success=False)
     run_negotiation_case(b"OK STARTTLS\n", success=False)
+    run_negotiation_case(b"OK STARTTLS\n", upsc=str(QUERY_CLI), success=False)
     if upsc:
         run_negotiation_case(b"OK STARTTLS\n", upsc=upsc, success=False)
         print("Default transport differential: untrusted/wrong-host TLS, two STARTTLS refusals and failed handshake match official upsc")
     else:
         print("Official upsc transport differential: not run (upsc is unavailable)")
+    print("Native upsc transport: unverified TLS, two plaintext fallbacks and handshake failure passed (4 cases)")
     print("TLS smoke: verified trust/auth/rejection, default unverified TLS, plaintext fallback/auth, required TLS and handshake failure passed (10 moonnut cases)")
 
 

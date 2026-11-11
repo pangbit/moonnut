@@ -23,6 +23,8 @@ import tempfile
 import threading
 import time
 
+from upsc_cli_integration import compare_query_cli
+
 ROOT = Path(__file__).resolve().parents[1]
 BINARY = ROOT / "_build/native/debug/build/examples/query/query.exe"
 PYNUT_SHA256 = "a12d1e40f8cd926314157c137372628322dd09db94d697aca4bc9dc8beb64f82"
@@ -219,6 +221,7 @@ def configure_tls(folder, upsd):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--evidence-dir", type=Path, help="retain raw upsc CLI comparison output")
     parser.add_argument("--session-reference", type=Path, help="compiled loopback libupsclient session probe")
     parser.add_argument("--nut-reference", type=Path, help="compiled read-only libupsclient probe")
     parser.add_argument("--pynut", type=validate_pynut,
@@ -307,6 +310,8 @@ def main():
                 if reference is None:
                     raise RuntimeError("NUT synthetic devices did not become ready: " +
                                        result.stdout + result.stderr)
+
+                compare_query_cli(upsc, port, env, password, args.evidence_dir)
 
                 def query(*args):
                     result = run([str(BINARY), "127.0.0.1", str(port), "--plaintext", *args], env)

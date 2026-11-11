@@ -4,6 +4,8 @@ package "pangbit/moonnut/internal/admincli"
 // Values
 pub async fn run(writable~ : Bool) -> Unit
 
+pub async fn run_query() -> Unit
+
 // Errors
 
 // Types and methods

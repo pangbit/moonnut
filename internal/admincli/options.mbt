@@ -204,7 +204,7 @@ fn endpoint(value : String) -> (String, String, Int32) raise {
 }
 
 ///|
-async fn connect_timeout(opt : Options) -> Int32 {
+async fn connect_timeout(cli_value : String?) -> Int32 {
   let mut timeout = 10000
   for
     (source, value) in [
@@ -212,7 +212,7 @@ async fn connect_timeout(opt : Options) -> Int32 {
         "NUT_DEFAULT_CONNECT_TIMEOUT",
         @env.get_env_var("NUT_DEFAULT_CONNECT_TIMEOUT"),
       ),
-      ("cli_secs", opt.connect_timeout),
+      ("cli_secs", cli_value),
     ] {
     if value is Some(text) {
       let parsed = Some(@string.parse_double(text.trim())) catch { _ => None }

@@ -2,7 +2,7 @@
 
 **Client scope confirmed / 客户端范围已确认。** 固定基线、用户决定与阶段见 [parity-plan.md](parity-plan.md)。客户端实现和隔离对照继续进行；服务器/UPS 驱动实现范围外。
 
-NUT 固定源码：`541c2ecf0b2ec33dadb9f40b16acbe39042bd103` (2.8.4)。moonnut 审计起点：`709b5deb77afb33fbee940d2f5fa8e9a2bb1427c`；前批次完成选定读取、默认传输、会话与控制对照；本批次增加管理 CLI。
+NUT 固定源码：`541c2ecf0b2ec33dadb9f40b16acbe39042bd103` (2.8.4)。moonnut 审计起点：`709b5deb77afb33fbee940d2f5fa8e9a2bb1427c`；前批次完成选定读取、默认传输、会话与控制对照；本批次增加原生 upsc 查询 CLI。
 
 状态：**E** = 已实现且有选定场景证据，仍待完整验收；**M** = 缺失；**D** = 已知设计/接口差异；**U** = 未直接对照；**S** = 客户端相关部分待展开；**O** = 用户已确认范围外。`E` 不等于整行已通过。来源为文件级固定源码，最终用例须进一步记录行号/分支及运行证据。
 
@@ -57,7 +57,7 @@ N01–N30 覆盖固定版本顶层命令及 GET/LIST/SET 分支；GET TRACKING �
 | B08 | 错误与状态机 | E/U/D | 每个实际可达协议错误、传输/解析错误映射、错误优先级、tracking 结果；保留额外错误信息是否属于目标 | P1/P3/P4；[错误定义][errors] |
 | B09 | 数据与集合语义 | D/U | 字符串/bytes/vector、数组/map/set、顺序、重复、空值、未知类型、多个值；禁止未审核排序/转换 | P1/P2；[C++ API][cpp]、[PyNUT][pynut] |
 | B10 | 描述与服务特殊值 | E/U | 无描述的不同占位、server.*、upstream.*、驱动断开/陈旧；文档示例不是运行结果 | P1；[GET][get]、[LIST][list] |
-| B11 | CLI 输出与结束状态 | E/U/D；管理 CLI 已实现；NSS 日志/帮助等差异仍保留 | stdout/stderr、精确文本/空格/换行、错误/帮助退出码、版本身份、输入缺失、管道行为 | P1/P2；C01–C14 |
+| B11 | CLI 输出与结束状态 | E/U/D；查询/管理 CLI 已实现常用流程；NSS 日志/帮助等差异仍保留 | stdout/stderr、精确文本/空格/换行、错误/帮助退出码、版本身份、输入缺失、管道行为 | P1/P2；C01–C14 |
 | B12 | 环境/配置优先级 | E/M/U/D；管理 CLI 已读取 NUT_DEFAULT_CONNECT_TIMEOUT/-W；其他配置仍缺 | NUT_DEFAULT_CONNECT_TIMEOUT、NUT_DEBUG_LEVEL、默认配置/证书与 CLI 参数的真实优先级；MOONNUT_* 当前非等价接口 | P2；[C 实现][cimpl] |
 | B13 | 验证覆盖口径 | U | 每个 profile 保存同输入参考结果和本库结果；自测、直接差分、虚拟设备、硬件证据分开 | P0–P6 |
 | B14 | 授权、重复与不确定结果 | E/U；发送后丢确认关闭且不重发原生通过；隔离权限/驱动动作对照通过；不是实物效果验收 | 拒绝时无驱动动作；成功 ACK 与完成分开；发送后断线不自动重试；重复调用与参考结果一致 | P4；[SET][set]、[INSTCMD][inst] |
@@ -70,10 +70,10 @@ B08 不能只断言“均失败”。使用固定 [server/neterr.h][errors] 中�
 
 | ID | 程序与操作 | 当前状态 | 验收内容 | 来源/阶段 |
 | --- | --- | --- | --- | --- |
-| C01 | upsc -l / -L [host] | E/D | 名称/名称+描述、默认地址、端口、精确格式 | [upsc][upsc]；P2 |
-| C02 | upsc ups [variable] | E/D | 全变量/单值、server.*、地址解析、错误/输出 | [upsc][upsc]；P1/P2 |
-| C03 | upsc -c ups | E/D；API/演示已提供，CLI 可替换尚缺 | 登录客户端列表和输出 | [upsc][upsc]；P2/P3 |
-| C04 | upsc -h / -V / -W | M/D | 帮助、版本、连接超时、合法/非法参数及环境覆盖 | [upsc][upsc]；P2 |
+| C01 | upsc -l / -L [host] | E/U/D；原生 CLI 已实现，双设备精确输出差分待执行 | 名称/名称+描述、默认地址、端口、精确格式 | [upsc][upsc]；P2 |
+| C02 | upsc ups [variable] | E/U/D；原生 CLI 已实现，含 server.* 与常见错误；直接差分待执行 | 全变量/单值、server.*、地址解析、错误/输出 | [upsc][upsc]；P1/P2 |
+| C03 | upsc -c ups | E/U/D；原生 -c 已实现；零/一/二个消费者及重复地址差分待执行 | 登录客户端列表和输出 | [upsc][upsc]；P2/P3 |
+| C04 | upsc -h / -V / -W | E/U/D；选项已实现；帮助身份/完整诊断仍不同，超时/地址直接差分待执行 | 帮助、版本、连接超时、合法/非法参数及环境覆盖 | [upsc][upsc]；P2 |
 | C05 | upsrw 默认 / -l | E/U/D；原生 upsrw 默认/-l 有序列表文本已通过[管理 CLI 对照][admin-ci] | 完整变量、描述、类型、长度、选项、SELECTED 标记、当前值；不能只比较集合 | [upsrw][upsrw]；P1/P2 |
 | C06 | upsrw -s VAR=VALUE | E/U/D；原生 upsrw -s 的值/权限/范围对照通过；长输入等未完 | 非交互写入、值转义/边界、错误、完成语义 | [upsrw][upsrw]；P4 |
 | C07 | upsrw -s VAR；-u/-p | E/U/D；POSIX 用户名/密码/值提示已实现；upsrw 值提示在 Linux 管道对照通过，用户名/密码本批仅直接测 upscmd；TTY/EOF 未完 | 交互输入值与缺失凭据提示、EOF/非 TTY；只用一次性假凭据 | [upsrw][upsrw]；P4 |
@@ -166,6 +166,8 @@ X01–X08 为 **O**：用户明确不实现服务端或 UPS 驱动及其管理�
 
 当前 P4 子集：48 项原生测试通过，三项新增见 [controls_wbtest.mbt](../controls_wbtest.mbt)。
 [控制文档](controls.md)及[隔离控制对照](../scripts/control_integration.py)规定 52 项结果、15 条驱动请求、8 个真实 tracking ID 和三次官方 CLI 执行；本批 [CI 42988803694][control-ci] 已通过（代码 `0e5413fe7f4ac2090c27fb491525e08279223105`），只关闭对应场景的未执行状态。对照仅用新建回环 upsd 和内存驱动，无真实 UPS、upsmon 或关机程序。
+
+查询 CLI 增量见 [query-cli.md](query-cli.md)：C01–C04 已有原生实现，40 场景直接差分待 Linux 执行；本地四项新增传输检查通过。流式部分结果、完整错误与平台边界等仍保留 U/D。
 
 每个验收 ID 至少关联 `reference profile → case/input/state → reference result → moonnut result → diff → evidence → verdict`。跨行共用一个真实场景可以，但各断言须可定位。`未实现`、`未测`、`环境阻塞`、`双方行为冲突待裁定` 都不能记作通过。已经选择的范围内，任何未解决差异都阻止“完全一致”的结论。
 

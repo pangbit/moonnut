@@ -2,6 +2,12 @@
 
 ## Unreleased / 未发布
 
+- Add native upsc for UPS/variable/consumer queries, common argument/error behavior
+  and connection timeout options. Add four local transport checks and a 40-case
+  isolated official CLI differential; Linux execution is pending.
+- 新增原生 upsc 查询、常用参数/错误与连接超时选项；本地四项传输检查通过，新增
+  40 场景官方差分待 Linux 执行。完整客户端目标、剩余差异和发布限制不变。
+
 - Add native upsrw/upscmd management CLIs with listing, POSIX prompts, raw command
   parameters and official-style tracking waits/output/exit status. Add bounded
   single-line Session exchanges and blocking connect timeout selection.

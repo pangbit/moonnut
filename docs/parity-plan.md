@@ -38,7 +38,7 @@ CI 记录包版本、架构、官方 CLI 二进制 SHA-256 和动态库/TLS 后�
 | Layer / 层次 | Scope / 范围 | Current gap / 当前缺口 |
 | --- | --- | --- |
 | Network client library | 所有 N01–N30 请求、响应/错误/状态机、传输；C/C++/PyNUT 业务能力的 MoonBit 映射 | 持久会话、tracking 与控制协议已推进；库便捷映射、低层 API 等仍有缺口 |
-| Official client CLIs | upsc、upsrw、upscmd 的参数、默认、交互、输出/退出状态、等待语义 | 新增 cmd/upsrw 与 cmd/upscmd；query 仍为演示；完整输出/边界与 upsc 替代尚缺 |
+| Official client CLIs | upsc、upsrw、upscmd 的参数、默认、交互、输出/退出状态、等待语义 | cmd/upsc、cmd/upsrw 与 cmd/upscmd 已实现常用流程；query 仍为演示；完整输出/错误/平台边界尚缺 |
 | Monitoring clients | upsmon、upslog、upssched、GUI/CGI 客户端功能，X09–X11/X14 | 未实现；逐程序/配置项继续展开，不能因当前为库而删除 |
 | Adjacent tools | X12/X13/X15 保留客户端相关扫描、配置及平台接入；非客户端后端按角色区分 | 需逐项映射；USB/物理驱动与服务端安装不纳入产品实现 |
 | Server/drivers | X01–X08 | 用户确认范围外；官方 upsd、dummy-ups、合成 socket 状态仅用于测试 |
@@ -116,3 +116,14 @@ observations, explicitly excludes six NSS diagnostic lines from semantic stderr
 comparison, and retains the corresponding parity gap. See admin-cli.md for actual
 execution status and remaining limits. Monitoring and other client capabilities
 remain in scope; no real UPS or host shutdown operation is performed.
+
+## Query CLI increment / 查询 CLI 增量
+
+新增 cmd/upsc，按 C01–C04 推进常用只读查询。复用双虚拟设备夹具，新增 40 场景官方
+差分与原始输出 artifact，首次固定 Linux 执行待完成；本地 49 项原生、20 项 JSON、
+10 项原有 TLS 和 4 项新增查询 CLI 传输检查通过。参见[查询 CLI 文档](query-cli.md)。
+
+English: Common upsc workflows are implemented with ordered output and explicit
+remaining gaps. The 40-case official differential is pending Linux execution;
+help/version identity and NSS diagnostics remain differences. Monitoring, streaming,
+full error/platform behavior and other client API work remain in scope.
